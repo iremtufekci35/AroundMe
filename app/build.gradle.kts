@@ -57,6 +57,15 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation (libs.accompanist.permissions)
+
+    // permissions for user location
     implementation (libs.kotlinx.coroutines.play.services)
     implementation (libs.play.services.location)
+    implementation (libs.play.services.maps)
+    implementation (libs.play.services.location.v2101)
+
+    // for map
+    implementation (libs.osmdroid.android)
+
+
 }
