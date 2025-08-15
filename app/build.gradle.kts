@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.dagger.hilt.android")
+    kotlin("kapt")
 }
 
 android {
@@ -58,14 +60,32 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation (libs.accompanist.permissions)
 
-    // permissions for user location
+    // Permissions for user location
     implementation (libs.kotlinx.coroutines.play.services)
     implementation (libs.play.services.location)
     implementation (libs.play.services.maps)
     implementation (libs.play.services.location.v2101)
 
-    // for map
+    // For map
     implementation (libs.osmdroid.android)
 
+    // Dagger - Hilt
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
+
+    // ViewModel with Hilt
+    implementation(libs.androidx.hilt.navigation.fragment)
+
+    // Compose
+    implementation(libs.androidx.navigation.compose)
+    implementation (libs.androidx.hilt.navigation.compose)
+
+    // Retrofit
+    implementation (libs.retrofit)
+    implementation (libs.converter.gson)
+
+    // OkHttp
+    implementation (libs.logging.interceptor)
+    implementation (libs.material3)
 
 }

@@ -1,12 +1,14 @@
-package com.example.aroundme
+package com.example.aroundme.di
 
 import android.app.Application
+import dagger.hilt.android.HiltAndroidApp
 import org.osmdroid.config.Configuration
 
 /**
-* Created by İrem TÜFEKCİ on 14/08/2025.
+Created by Irem TUFEKCI on 14/08/2025
 **/
 
+@HiltAndroidApp
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
