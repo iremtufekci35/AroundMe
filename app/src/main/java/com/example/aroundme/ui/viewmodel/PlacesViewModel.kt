@@ -17,10 +17,6 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
     private val _places = MutableStateFlow<List<Place>>(emptyList())
     val places: StateFlow<List<Place>> = _places
 
-    fun loadTouristAttractions() {
-        loadTouristAttractionsInternal(null)
-    }
-
     fun searchAttractionsByName(name: String) {
         loadTouristAttractionsInternal(name)
     }
@@ -54,8 +50,12 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
                             val obj = JSONObject(element.toString())
                             val lat = obj.getDouble("lat")
                             val lon = obj.getDouble("lon")
-                            val name = obj.getJSONObject("tags").optString("name") ?: "Gezilecek Yer"
-                            Place(name, lat, lon)
+                            val tags = obj.getJSONObject("tags")
+                            val name = tags.optString("name", "Gezilecek Yer")
+                            val street = tags.optString("addr:street", "")
+                            val historic = tags.optString("historic", "")
+                            val bus = tags.optString("bus", "")
+                            Place(name, lat, lon, street, historic,bus)
                         } catch (e: Exception) {
                             e.printStackTrace()
                             null
