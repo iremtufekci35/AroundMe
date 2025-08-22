@@ -1,73 +1,166 @@
 package com.example.aroundme.ui.cards
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
+import android.app.Fragment
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.example.aroundme.data.model.Place
-
+import com.example.aroundme.utils.Translations
 
 @Composable
-fun PlaceDetailsCard(place: Place, onClose: () -> Unit) {
-    var offsetY by remember { mutableFloatStateOf(0f) }
-    val keyBoardController = LocalSoftwareKeyboardController.current
-    keyBoardController?.hide()
-    Box(
-        Modifier
-            .fillMaxSize()
-
-    ) {
+fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
+    val tags = place.tags
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .offset(y = offsetY.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.inversePrimary,
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ),
-            elevation = CardDefaults.cardElevation(8.dp)
+            elevation = CardDefaults.cardElevation(12.dp),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                IconButton(
-                    onClick = onClose,
-                    modifier = Modifier.align(Alignment.End)
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier.width(50.dp).height(5.dp).padding(bottom = 12.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(50)
+                        )
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Kapat",
+                    Text(
+                        text = tags?.name ?: "Bilinmiyor",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.weight(1f)
                     )
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Kapat",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
 
-                Text(text = place.name, style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(4.dp))
-                place.street?.let { Text(text = "Street: $it") }
-                place.historic?.let { Text(text = "Historic: $it") }
-                place.bus?.let { Text(text = "Bus: $it") }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+                val streetInfo = tags?.addrHousenumber ?: tags?.addrStreet
+                streetInfo?.takeUnless { it.isBlank() }?.let { value ->
+                    InfoRow(icon = Icons.Default.Place, label = "Sokak / Ev", value = value)
+                }
 
-                /** Kart görünümü ve içerik UI güncellenmeli */
+                tags?.historic?.takeUnless { it.isBlank() }?.let {
+                    val translated = Translations.translate(Translations.historicMap, it)
+                    InfoRow(Icons.Default.AccountBalance, "Tarihî", translated ?: it)
+                }
+
+                tags?.bus?.takeUnless { it.isBlank() }?.let {
+                    InfoRow(Icons.Default.DirectionsBus, "Otobüs", it)
+                }
+
+                tags?.amenity?.takeUnless { it.isBlank() }?.let {
+                    val translated = Translations.translate(Translations.amenityMap, it)
+                    InfoRow(Icons.Default.LocalOffer, "Tesis / Hizmet", translated ?: it)
+                }
+
+                tags?.cuisine?.takeUnless { it.isBlank() }?.let {
+                    val translated = Translations.translate(Translations.cuisineMap, it)
+                    InfoRow(Icons.Default.Restaurant, "Mutfak", translated ?: it)
+                }
+
+                tags?.healthcare?.takeUnless { it.isBlank() }?.let {
+                    val translated = Translations.translate(Translations.healthcareMap, it)
+                    InfoRow(Icons.Default.LocalHospital, "Sağlık", translated ?: it)
+                }
+
+                tags?.openingHours?.takeUnless { it.isBlank() }?.let {
+                    InfoRow(Icons.Default.Schedule, "Açılış Saatleri", it)
+                }
+
+                tags?.operator?.takeUnless { it.isBlank() }?.let {
+                    InfoRow(Icons.Default.AccountBox, "İşletmeci", it)
+                }
+                tags?.place?.takeUnless { it.isBlank() }?.let {
+                    val translated = Translations.translate(Translations.placeMap, it)
+                    InfoRow(Icons.Default.LocationCity, "Yer", translated ?: it)
+                }
+
+                tags?.publicTransport?.takeUnless { it.isBlank() }?.let {
+                    val translated = Translations.translate(Translations.publicTransportMap, it)
+                    InfoRow(Icons.Default.Directions, "Toplu Taşıma", translated ?: it)
+                }
+
+                tags?.railway?.takeUnless { it.isBlank() }?.let {
+                    val translated = Translations.translate(Translations.railwayMap, it)
+                    InfoRow(Icons.Default.Train, "Tren İstasyonu", translated ?: it)
+                }
+
+                tags?.shop?.takeUnless { it.isBlank() }?.let {
+                    val translated = Translations.translate(Translations.shopMap, it)
+                    InfoRow(Icons.Default.Store, "Mağaza", translated ?: it)
+                }
+
+                tags?.tourism?.takeUnless { it.isBlank() }?.let {
+                    val translated = Translations.translate(Translations.tourismMap, it)
+                    InfoRow(Icons.Default.Tour, "Turizm", translated ?: it)
+                }
+
+                tags?.train?.takeUnless { it.isBlank() }?.let {
+                    val translated = Translations.translate(Translations.railwayMap, it)
+                    InfoRow(Icons.Default.Train, "Tren", translated ?: it)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun InfoRow(icon: ImageVector, label: String, value: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(text = label, style = MaterialTheme.typography.labelLarge)
+                Text(text = value, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

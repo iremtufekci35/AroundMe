@@ -14,8 +14,8 @@ import javax.inject.Inject
 @HiltViewModel
 class PlacesViewModel @Inject constructor() : ViewModel() {
 
-    private val _places = MutableStateFlow<List<Place>>(emptyList())
-    val places: StateFlow<List<Place>> = _places
+    private val _places = MutableStateFlow<List<Place.Element>>(emptyList())
+    val places: StateFlow<List<Place.Element>> = _places
 
     fun searchAttractionsByName(name: String) {
         loadTouristAttractionsInternal(name)
@@ -44,25 +44,50 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
                 if (response.isSuccessful) {
                     val body = response.body()
                     val elements = body?.getAsJsonArray("elements") ?: return@launch
-
                     val list = elements.mapNotNull { element ->
                         try {
                             val obj = JSONObject(element.toString())
-                            val lat = obj.getDouble("lat")
-                            val lon = obj.getDouble("lon")
-                            val tags = obj.getJSONObject("tags")
-                            val name = tags.optString("name", "Gezilecek Yer")
-                            val street = tags.optString("addr:street", "")
-                            val historic = tags.optString("historic", "")
-                            val bus = tags.optString("bus", "")
-                            Place(name, lat, lon, street, historic,bus)
+                            val id = obj.optLong("id")
+                            val lat = obj.optDouble("lat")
+                            val lon = obj.optDouble("lon")
+                            val tagsJson = obj.optJSONObject("tags") ?: JSONObject()
+                            val tags = Place.Element.Tags(
+                                addrHousenumber = tagsJson.optString("addr:housenumber"),
+                                addrStreet = tagsJson.optString("addr:street"),
+                                amenity = tagsJson.optString("amenity"),
+                                bench = tagsJson.optString("bench"),
+                                bus = tagsJson.optString("bus"),
+                                cuisine = tagsJson.optString("cuisine"),
+                                healthcare = tagsJson.optString("healthcare"),
+                                highway = tagsJson.optString("highway"),
+                                historic = tagsJson.optString("historic"),
+                                name = tagsJson.optString("name"),
+                                openingHours = tagsJson.optString("opening_hours"),
+                                `operator` = tagsJson.optString("operator"),
+                                operatorWikidata = tagsJson.optString("operator:wikidata"),
+                                operatorWikipedia = tagsJson.optString("operator:wikipedia"),
+                                place = tagsJson.optString("place"),
+                                publicTransport = tagsJson.optString("public_transport"),
+                                railway = tagsJson.optString("railway"),
+                                ref = tagsJson.optString("ref"),
+                                shelter = tagsJson.optString("shelter"),
+                                shop = tagsJson.optString("shop"),
+                                tourism = tagsJson.optString("tourism"),
+                                train = tagsJson.optString("train"),
+                                wikidata = tagsJson.optString("wikidata"),
+                                wikimediaCommons = tagsJson.optString("wikimedia_commons"),
+                                wikipedia = tagsJson.optString("wikipedia"),
+                                wikipediaArz = tagsJson.optString("wikipedia:arz"),
+                                wikipediaEn = tagsJson.optString("wikipedia:en")
+                            )
+                            Place.Element(id = id, lat = lat, lon = lon, tags = tags, type = obj.optString("type"))
                         } catch (e: Exception) {
                             e.printStackTrace()
                             null
                         }
                     }
-
                     _places.value = list
+
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

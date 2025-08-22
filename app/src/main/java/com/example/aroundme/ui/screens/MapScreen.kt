@@ -1,5 +1,7 @@
 package com.example.aroundme.ui.screens
 
+import android.view.InputDevice
+import android.view.MotionEvent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,6 +22,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.example.aroundme.data.model.Place
 import com.example.aroundme.ui.cards.PlaceDetailsCard
+import org.osmdroid.views.CustomZoomButtonsController
 
 @Composable
 fun MapScreen(
@@ -33,13 +36,29 @@ fun MapScreen(
     val mapView = remember {
         MapView(context).apply {
             setMultiTouchControls(true)
+            zoomController.setVisibility(CustomZoomButtonsController.Visibility.SHOW_AND_FADEOUT)
             controller.setZoom(15.0)
+            controller.setCenter(GeoPoint(latitude, longitude))
+
+            setOnGenericMotionListener { _, event ->
+                if (event.action == MotionEvent.ACTION_SCROLL &&
+                    event.isFromSource(InputDevice.SOURCE_CLASS_POINTER)
+                ) {
+                    val scrollValue = event.getAxisValue(MotionEvent.AXIS_VSCROLL)
+                    val currentZoom = zoomLevelDouble
+                    val zoomStep = 1.0
+
+                    if (scrollValue < 0) controller.setZoom(currentZoom - zoomStep)
+                    else if (scrollValue > 0) controller.setZoom(currentZoom + zoomStep)
+                    true
+                } else false
+            }
         }
     }
 
     val places by placesViewModel.places.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
-    var selectedPlace by remember { mutableStateOf<Place?>(null) }
+    var selectedPlace by remember { mutableStateOf<Place.Element?>(null) }
 
     val userMarker = remember { Marker(mapView) }
 
@@ -47,14 +66,14 @@ fun MapScreen(
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize()) { map ->
             userMarker.position = GeoPoint(latitude, longitude)
             userMarker.title = "Buradasınız"
-            map.controller.setCenter(GeoPoint(latitude, longitude))
             if (!map.overlays.contains(userMarker)) map.overlays.add(userMarker)
 
             map.overlays.removeAll { it is Marker && it != userMarker }
+
             places.forEach { place ->
                 val marker = Marker(map)
-                marker.position = GeoPoint(place.lat, place.lon)
-                marker.title = place.name
+                marker.position = GeoPoint(place.lat ?: 0.0, place.lon ?: 0.0)
+                marker.title = place.tags?.name ?: "Gezilecek Yer"
                 marker.setOnMarkerClickListener { _, _ ->
                     selectedPlace = place
                     true
@@ -81,20 +100,25 @@ fun MapScreen(
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = MaterialTheme.colorScheme.surface
+                    focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    cursorColor = MaterialTheme.colorScheme.primary
                 ),
                 trailingIcon = {
                     IconButton(
                         onClick = {
                             placesViewModel.searchAttractionsByName(searchQuery)
-                            val firstPlace = places.firstOrNull { it.name.contains(searchQuery, ignoreCase = true) }
+                            val firstPlace = places.firstOrNull {
+                                it.tags?.name?.contains(
+                                    searchQuery,
+                                    true
+                                ) == true
+                            }
                             firstPlace?.let {
-                                mapView.controller.animateTo(GeoPoint(it.lat, it.lon))
+                                mapView.controller.animateTo(GeoPoint(it.lat ?: 0.0, it.lon ?: 0.0))
                                 mapView.controller.setZoom(15.0)
                             }
                             keyboardController?.hide()
-                            /** Burada arama yapıldıktan sonra keyboard gizlenmeli ve arama konumuna gitmeli */
                         }
                     ) {
                         Icon(
@@ -107,12 +131,14 @@ fun MapScreen(
             )
         }
 
-        selectedPlace?.let { place ->
-            PlaceDetailsCard(place = place, onClose = { selectedPlace = null }
-            )
+            selectedPlace?.let { place ->
+            PlaceDetailsCard(place = place, onClose = { selectedPlace = null })
         }
     }
 }
+
+
+
 
 
 

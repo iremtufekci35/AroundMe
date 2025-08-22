@@ -88,4 +88,8 @@ dependencies {
     implementation (libs.logging.interceptor)
     implementation (libs.material3)
 
+    implementation(platform(libs.androidx.compose.bom.v20250800))
+    implementation(libs.androidx.material.icons.extended)
+
+
 }
