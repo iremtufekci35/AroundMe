@@ -3,6 +3,7 @@ package com.example.aroundme.ui.screens
 import android.view.InputDevice
 import android.view.MotionEvent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -22,7 +23,11 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.example.aroundme.data.model.Place
 import com.example.aroundme.ui.cards.PlaceDetailsCard
-import org.osmdroid.views.CustomZoomButtonsController
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import java.io.File
 
 @Composable
 fun MapScreen(
@@ -32,11 +37,19 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) {
+        Configuration.getInstance().apply {
+            osmdroidBasePath = File(context.cacheDir, "osmdroid")
+            osmdroidTileCache = File(context.cacheDir, "osmdroid/tiles")
+            userAgentValue = context.packageName
+        }
+    }
 
     val mapView = remember {
         MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setUseDataConnection(true)
             setMultiTouchControls(true)
-            zoomController.setVisibility(CustomZoomButtonsController.Visibility.SHOW_AND_FADEOUT)
             controller.setZoom(15.0)
             controller.setCenter(GeoPoint(latitude, longitude))
 
@@ -59,6 +72,8 @@ fun MapScreen(
     val places by placesViewModel.places.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     var selectedPlace by remember { mutableStateOf<Place.Element?>(null) }
+    val categories = listOf("Tarihi", "Doğa", "Müze", "Eğlence, Yemek")
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
 
     val userMarker = remember { Marker(mapView) }
 
@@ -82,7 +97,7 @@ fun MapScreen(
             }
         }
 
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp)
@@ -94,7 +109,7 @@ fun MapScreen(
                 placeholder = { Text("Gezilecek yer ara…") },
                 singleLine = true,
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(28.dp),
                 colors = TextFieldDefaults.colors(
@@ -107,12 +122,9 @@ fun MapScreen(
                 trailingIcon = {
                     IconButton(
                         onClick = {
-                            placesViewModel.searchAttractionsByName(searchQuery)
+                            placesViewModel.searchAttractions(searchQuery, selectedCategory)
                             val firstPlace = places.firstOrNull {
-                                it.tags?.name?.contains(
-                                    searchQuery,
-                                    true
-                                ) == true
+                                it.tags?.name?.contains(searchQuery, true) == true
                             }
                             firstPlace?.let {
                                 mapView.controller.animateTo(GeoPoint(it.lat ?: 0.0, it.lon ?: 0.0))
@@ -127,11 +139,64 @@ fun MapScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                }
+                },
+                keyboardActions = KeyboardActions(
+                    onSearch = {
+                        placesViewModel.searchAttractions(searchQuery, selectedCategory)
+                        val firstPlace = places.firstOrNull {
+                            it.tags?.name?.contains(searchQuery, true) == true
+                        }
+                        firstPlace?.let {
+                            mapView.controller.animateTo(GeoPoint(it.lat ?: 0.0, it.lon ?: 0.0))
+                            mapView.controller.setZoom(15.0)
+                        }
+                        keyboardController?.hide()
+                    }
+                )
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(categories) { category ->
+                    val isSelected = selectedCategory == category
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            selectedCategory = if (isSelected) null else category
+                            placesViewModel.searchAttractions(searchQuery, selectedCategory)
+                        },
+                        label = { Text(category) },
+                        enabled = true,
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = if (isSelected)
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                            else
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                            labelColor = if (isSelected)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            selected = isSelected,
+                            enabled = true,
+                            borderColor = if (isSelected)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.height(36.dp)
+                    )
+                }
+            }
         }
 
-            selectedPlace?.let { place ->
+        selectedPlace?.let { place ->
             PlaceDetailsCard(place = place, onClose = { selectedPlace = null })
         }
     }

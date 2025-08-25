@@ -17,8 +17,16 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
     private val _places = MutableStateFlow<List<Place.Element>>(emptyList())
     val places: StateFlow<List<Place.Element>> = _places
 
-    fun searchAttractionsByName(name: String) {
-        loadTouristAttractionsInternal(name)
+    fun searchAttractions(name: String?, category: String?) {
+        viewModelScope.launch {
+            loadTouristAttractionsInternal(name)
+            val filtered = _places.value.filter { place ->
+                val matchesName = name.isNullOrBlank() || place.tags?.name?.contains(name, true) == true
+                val matchesCategory = category.isNullOrBlank() || place.tags?.tourism == category
+                matchesName && matchesCategory
+            }
+            _places.value = filtered
+        }
     }
 
     private fun loadTouristAttractionsInternal(searchQuery: String?) {

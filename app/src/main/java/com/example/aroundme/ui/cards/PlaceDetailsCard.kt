@@ -1,6 +1,5 @@
 package com.example.aroundme.ui.cards
 
-import android.app.Fragment
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,7 +26,7 @@ fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ),
-            elevation = CardDefaults.cardElevation(12.dp),
+            elevation = CardDefaults.cardElevation(16.dp),
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         ) {
             Column(
@@ -37,9 +36,12 @@ fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
-                    modifier = Modifier.width(50.dp).height(5.dp).padding(bottom = 12.dp)
+                    modifier = Modifier
+                        .width(60.dp)
+                        .height(6.dp)
+                        .padding(bottom = 16.dp)
                         .background(
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
                             shape = RoundedCornerShape(50)
                         )
                 )
@@ -48,85 +50,63 @@ fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.Place,
+                        contentDescription = "",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = tags?.name ?: "Bilinmiyor",
                         style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = onClose) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Kapat",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-                val streetInfo = tags?.addrHousenumber ?: tags?.addrStreet
-                streetInfo?.takeUnless { it.isBlank() }?.let { value ->
-                    InfoRow(icon = Icons.Default.Place, label = "Sokak / Ev", value = value)
-                }
+                Spacer(modifier = Modifier.height(16.dp))
 
-                tags?.historic?.takeUnless { it.isBlank() }?.let {
-                    val translated = Translations.translate(Translations.historicMap, it)
-                    InfoRow(Icons.Default.AccountBalance, "Tarihî", translated ?: it)
-                }
+                val infoList = listOf(
+                    Triple(tags?.addrHousenumber ?: tags?.addrStreet, Icons.Default.Place, "Sokak / Ev"),
+                    Triple(tags?.historic, Icons.Default.AccountBalance, "Tarihî"),
+                    Triple(tags?.bus, Icons.Default.DirectionsBus, "Otobüs"),
+                    Triple(tags?.amenity, Icons.Default.LocalOffer, "Tesis / Hizmet"),
+                    Triple(tags?.cuisine, Icons.Default.Restaurant, "Mutfak"),
+                    Triple(tags?.healthcare, Icons.Default.LocalHospital, "Sağlık"),
+                    Triple(tags?.openingHours, Icons.Default.Schedule, "Açılış Saatleri"),
+                    Triple(tags?.operator, Icons.Default.AccountBox, "İşletmeci"),
+                    Triple(tags?.place, Icons.Default.LocationCity, "Yer"),
+                    Triple(tags?.publicTransport, Icons.Default.Directions, "Toplu Taşıma"),
+                    Triple(tags?.railway, Icons.Default.Train, "Tren İstasyonu"),
+                    Triple(tags?.shop, Icons.Default.Store, "Mağaza"),
+                    Triple(tags?.tourism, Icons.Default.Tour, "Turizm"),
+                    Triple(tags?.train, Icons.Default.Train, "Tren")
+                )
 
-                tags?.bus?.takeUnless { it.isBlank() }?.let {
-                    InfoRow(Icons.Default.DirectionsBus, "Otobüs", it)
-                }
-
-                tags?.amenity?.takeUnless { it.isBlank() }?.let {
-                    val translated = Translations.translate(Translations.amenityMap, it)
-                    InfoRow(Icons.Default.LocalOffer, "Tesis / Hizmet", translated ?: it)
-                }
-
-                tags?.cuisine?.takeUnless { it.isBlank() }?.let {
-                    val translated = Translations.translate(Translations.cuisineMap, it)
-                    InfoRow(Icons.Default.Restaurant, "Mutfak", translated ?: it)
-                }
-
-                tags?.healthcare?.takeUnless { it.isBlank() }?.let {
-                    val translated = Translations.translate(Translations.healthcareMap, it)
-                    InfoRow(Icons.Default.LocalHospital, "Sağlık", translated ?: it)
-                }
-
-                tags?.openingHours?.takeUnless { it.isBlank() }?.let {
-                    InfoRow(Icons.Default.Schedule, "Açılış Saatleri", it)
-                }
-
-                tags?.operator?.takeUnless { it.isBlank() }?.let {
-                    InfoRow(Icons.Default.AccountBox, "İşletmeci", it)
-                }
-                tags?.place?.takeUnless { it.isBlank() }?.let {
-                    val translated = Translations.translate(Translations.placeMap, it)
-                    InfoRow(Icons.Default.LocationCity, "Yer", translated ?: it)
-                }
-
-                tags?.publicTransport?.takeUnless { it.isBlank() }?.let {
-                    val translated = Translations.translate(Translations.publicTransportMap, it)
-                    InfoRow(Icons.Default.Directions, "Toplu Taşıma", translated ?: it)
-                }
-
-                tags?.railway?.takeUnless { it.isBlank() }?.let {
-                    val translated = Translations.translate(Translations.railwayMap, it)
-                    InfoRow(Icons.Default.Train, "Tren İstasyonu", translated ?: it)
-                }
-
-                tags?.shop?.takeUnless { it.isBlank() }?.let {
-                    val translated = Translations.translate(Translations.shopMap, it)
-                    InfoRow(Icons.Default.Store, "Mağaza", translated ?: it)
-                }
-
-                tags?.tourism?.takeUnless { it.isBlank() }?.let {
-                    val translated = Translations.translate(Translations.tourismMap, it)
-                    InfoRow(Icons.Default.Tour, "Turizm", translated ?: it)
-                }
-
-                tags?.train?.takeUnless { it.isBlank() }?.let {
-                    val translated = Translations.translate(Translations.railwayMap, it)
-                    InfoRow(Icons.Default.Train, "Tren", translated ?: it)
+                infoList.forEach { (value, icon, label) ->
+                    value?.takeUnless { it.isBlank() }?.let {
+                        val translated = when (label) {
+                            "Tarihî" -> Translations.translate(Translations.historicMap, it)
+                            "Tesis / Hizmet" -> Translations.translate(Translations.amenityMap, it)
+                            "Mutfak" -> Translations.translate(Translations.cuisineMap, it)
+                            "Sağlık" -> Translations.translate(Translations.healthcareMap, it)
+                            "Yer" -> Translations.translate(Translations.placeMap, it)
+                            "Toplu Taşıma" -> Translations.translate(Translations.publicTransportMap, it)
+                            "Tren İstasyonu", "Tren" -> Translations.translate(Translations.railwayMap, it)
+                            "Mağaza" -> Translations.translate(Translations.shopMap, it)
+                            "Turizm" -> Translations.translate(Translations.tourismMap, it)
+                            else -> it
+                        }
+                        InfoRow(icon = icon, label = label, value = translated ?: it)
+                    }
                 }
             }
         }
@@ -142,26 +122,35 @@ fun InfoRow(icon: ImageVector, label: String, value: String) {
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(2.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(24.dp)
             )
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(14.dp))
             Column {
-                Text(text = label, style = MaterialTheme.typography.labelLarge)
-                Text(text = value, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }
 }
+
