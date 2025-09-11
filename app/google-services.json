@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "514708492505",
+    "project_id": "aroundme-eec64",
+    "storage_bucket": "aroundme-eec64.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:514708492505:android:b79be237c002adf1d16ec8",
+        "android_client_info": {
+          "package_name": "com.example.aroundme"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "514708492505-enobm7ekd2gjngb3rn27mm98tcopu2f2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.aroundme",
+            "certificate_hash": "c5390705a98d4511b0b7fe6630a1a719e332582e"
+          }
+        },
+        {
+          "client_id": "514708492505-orf6fcr6hcquun5ch9e140i8efm7rohh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDb_lFlcfQZf5Tox5ecKTnfrjvS0STDimI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "514708492505-orf6fcr6hcquun5ch9e140i8efm7rohh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

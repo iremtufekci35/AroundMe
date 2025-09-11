@@ -1,6 +1,7 @@
 package com.example.aroundme.di
 
 import android.app.Application
+import com.google.firebase.FirebaseApp
 import dagger.hilt.android.HiltAndroidApp
 import org.osmdroid.config.Configuration
 
@@ -13,5 +14,6 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         Configuration.getInstance().userAgentValue = packageName
+        FirebaseApp.initializeApp(this)
     }
 }

@@ -16,6 +16,11 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.aroundme.ui.screens.LoginScreen
+import com.example.aroundme.ui.screens.SignUpScreen
 import com.example.aroundme.ui.viewmodel.LocationViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -38,27 +43,25 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MainScreen(modifier: Modifier = Modifier, viewModel: LocationViewModel = hiltViewModel()) {
-    val locationPermissionState = rememberPermissionState(permission = Manifest.permission.ACCESS_FINE_LOCATION)
-    val userLocation by viewModel.userLocation.collectAsState()
+    val navController = rememberNavController()
 
-    LaunchedEffect(Unit) {
-        locationPermissionState.launchPermissionRequest()
-    }
+    NavHost(navController = navController, startDestination = "login", modifier = modifier) {
+        composable("login") { LoginScreen(navController) }
+        composable("signup") { SignUpScreen(navController) }
+        composable("map") {
+            val locationPermissionState = rememberPermissionState(permission = Manifest.permission.ACCESS_FINE_LOCATION)
+            val userLocation by viewModel.userLocation.collectAsState()
 
-    LaunchedEffect(locationPermissionState.status) {
-        if (locationPermissionState.status.isGranted) {
-            viewModel.startLocationUpdates()
-        }
-    }
+            LaunchedEffect(Unit) { locationPermissionState.launchPermissionRequest() }
+            LaunchedEffect(locationPermissionState.status) {
+                if (locationPermissionState.status.isGranted) viewModel.startLocationUpdates()
+            }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        if (userLocation != null) {
-            MapScreen(
-                latitude = userLocation!!.latitude,
-                longitude = userLocation!!.longitude,
-            )
-        } else {
-            Text("Konum alınıyor...", modifier = Modifier.padding(16.dp))
+            if (userLocation != null) {
+                MapScreen(latitude = userLocation!!.latitude, longitude = userLocation!!.longitude)
+            } else {
+                Text("Konum alınıyor...", modifier = Modifier.padding(16.dp))
+            }
         }
     }
 }

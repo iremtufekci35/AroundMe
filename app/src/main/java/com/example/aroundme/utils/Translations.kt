@@ -16,7 +16,8 @@ object Translations {
         "fast_food" to "Hızlı Yemek",
         "payment_centre" to "Ödeme İşlemleri",
         "marketplace" to "Alışveriş",
-        "car_rental" to "Araç Kiralama"
+        "car_rental" to "Araç Kiralama",
+        "fuel" to "Yakıt"
     )
     val cuisineMap = mapOf(
         "turkish" to "Türk Mutfağı",
