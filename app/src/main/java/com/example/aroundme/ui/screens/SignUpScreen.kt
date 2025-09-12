@@ -49,7 +49,9 @@ import androidx.navigation.NavHostController
 import com.example.aroundme.R
 import com.example.aroundme.data.model.User
 import com.example.aroundme.ui.viewmodel.UserViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SignUpScreen(navController: NavHostController) {
@@ -104,7 +106,7 @@ fun SignUpScreen(navController: NavHostController) {
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                val textFieldHeight = 56.dp
+                val textFieldHeight = 60.dp
                 val iconSize = 24.dp
                 val cornerRadius = 12.dp
 
@@ -134,7 +136,11 @@ fun SignUpScreen(navController: NavHostController) {
                     label = { Text("Email") },
                     singleLine = true,
                     leadingIcon = {
-                        Icon(Icons.Default.Email, contentDescription = "Email", modifier = Modifier.size(iconSize))
+                        Icon(
+                            Icons.Default.Email,
+                            contentDescription = "Email",
+                            modifier = Modifier.size(iconSize)
+                        )
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     modifier = Modifier
@@ -151,11 +157,22 @@ fun SignUpScreen(navController: NavHostController) {
                     label = { Text("Şifre") },
                     singleLine = true,
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = "Şifre", modifier = Modifier.size(iconSize)) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Lock,
+                            contentDescription = "Şifre",
+                            modifier = Modifier.size(iconSize)
+                        )
+                    },
                     trailingIcon = {
-                        val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                        val image =
+                            if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(imageVector = image, contentDescription = null, modifier = Modifier.size(iconSize))
+                            Icon(
+                                imageVector = image,
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize)
+                            )
                         }
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -179,7 +196,10 @@ fun SignUpScreen(navController: NavHostController) {
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp))
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
                     } else {
                         Text("Kayıt Ol")
                     }
@@ -202,7 +222,12 @@ fun SignUpScreen(navController: NavHostController) {
                             email = ""
                             password = ""
                             name = ""
-                            navController.navigate("login") { popUpTo("signup") { inclusive = true } }
+
+                            withContext(Dispatchers.Main) {
+                                navController.navigate("login") {
+                                    popUpTo("signup") { inclusive = true }
+                                }
+                            }
                         }
                     }
                 }
