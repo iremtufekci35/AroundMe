@@ -21,6 +21,14 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
     private val _places = MutableStateFlow<List<Place.Element>>(emptyList())
     val places: StateFlow<List<Place.Element>> = _places
 
+    private val _loading = MutableStateFlow<Boolean>(false)
+    val loading: StateFlow<Boolean> = _loading
+
+    private val _error = MutableStateFlow<String?>("")
+
+    private val _recommendations = MutableStateFlow<List<PlaceRecommendation>>(emptyList())
+    val recommendations: StateFlow<List<PlaceRecommendation>> = _recommendations
+
     fun searchAttractions(name: String?, category: String?) {
         viewModelScope.launch {
             loadTouristAttractionsInternal(name)
@@ -33,8 +41,26 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
             _places.value = filtered
         }
     }
+    fun fetchAiRecommendations(latitude: Double, longitude: Double, category: String) {
+        viewModelScope.launch {
+            _loading.value = true
+            try {
+                val recommendationResponse = getRecommendationsAi(latitude, longitude, category)
+                _recommendations.value = recommendationResponse
 
-    private fun loadTouristAttractionsInternal(searchQuery: String?) {
+                recommendationResponse.forEach { rec ->
+                    loadTouristAttractionsInternal(rec.name)
+                }
+                showAiRecommendationsOnMap(recommendationResponse)
+            } catch (e: Exception) {
+                _error.value = e.message
+            } finally {
+                _loading.value = false
+            }
+        }
+    }
+
+     fun loadTouristAttractionsInternal(searchQuery: String?) {
         viewModelScope.launch {
             try {
                 val query = searchQuery?.let {

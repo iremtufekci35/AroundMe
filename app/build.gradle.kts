@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.firebase.ai)
+    implementation(libs.firebase.database)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -65,6 +66,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation (libs.accompanist.permissions)
     implementation(libs.firebase.auth)
+    implementation (libs.firebase.firestore.ktx)
 
     // Permissions for user location
     implementation (libs.kotlinx.coroutines.play.services)
@@ -96,6 +98,5 @@ dependencies {
 
     implementation(platform(libs.androidx.compose.bom.v20250800))
     implementation(libs.androidx.material.icons.extended)
-
 
 }

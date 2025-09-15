@@ -26,6 +26,8 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.navigation.NavHostController
 import com.example.aroundme.ui.viewmodel.UserViewModel
 import org.osmdroid.config.Configuration
@@ -42,6 +44,9 @@ fun MapScreen(
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val userViewModel: UserViewModel = hiltViewModel()
+    var shouldShowDialog = remember { mutableStateOf(false) }
+    val loading by placesViewModel.loading.collectAsState()
+    val recommendations by placesViewModel.recommendations.collectAsState()
 
     LaunchedEffect(Unit) {
         Configuration.getInstance().apply {
@@ -58,8 +63,10 @@ fun MapScreen(
             setMultiTouchControls(true)
             controller.setZoom(15.0)
             controller.setCenter(GeoPoint(latitude, longitude))
+            setPadding(0, 0, 0, 100)
         }
     }
+
 
     val places by placesViewModel.places.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
@@ -72,7 +79,8 @@ fun MapScreen(
 
         AndroidView(
             factory = { mapView },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize() .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+
         ) { map ->
             userMarker.position = GeoPoint(latitude, longitude)
             userMarker.title = "Buradasınız"
@@ -91,7 +99,6 @@ fun MapScreen(
                 map.overlays.add(marker)
             }
         }
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -121,13 +128,17 @@ fun MapScreen(
                 trailingIcon = {
                     IconButton(
                         onClick = {
-                            placesViewModel.searchAttractions(searchQuery, selectedCategory)
-                            val firstPlace = places.firstOrNull {
-                                it.tags?.name?.contains(searchQuery, true) == true
-                            }
-                            firstPlace?.let {
-                                mapView.controller.animateTo(GeoPoint(it.lat ?: 0.0, it.lon ?: 0.0))
-                                mapView.controller.setZoom(15.0)
+                            if (searchQuery.isBlank()) {
+                                mapView.overlays.removeAll { it is Marker && it != userMarker }
+                            } else {
+                                placesViewModel.searchAttractions(searchQuery, selectedCategory)
+                                val firstPlace = places.firstOrNull {
+                                    it.tags?.name?.contains(searchQuery, true) == true
+                                }
+                                firstPlace?.let {
+                                    mapView.controller.animateTo(GeoPoint(it.lat ?: 0.0, it.lon ?: 0.0))
+                                    mapView.controller.setZoom(15.0)
+                                }
                             }
                             keyboardController?.hide()
                         }
@@ -164,27 +175,32 @@ fun MapScreen(
                             selectedLabelColor = Color.Black
                         )
                     )
+
                 }
             }
         }
+
         LaunchedEffect(selectedCategory) {
             selectedCategory?.let { category ->
                 try {
-                    val recommendationResponse = placesViewModel.getRecommendationsAi(
-                        latitude,
-                        longitude,
-                        selectedCategory
-                    )
-                    println("response burada: $recommendationResponse")
-                    for (place in recommendationResponse) {
-                        placesViewModel.searchAttractions(place.name, category)
-                        /** when you can get the recommendation than take this place names and show them on the map */
-                    }
+                    println("fetch ai recommendations")
+                    /** too many request and can not show location lat and lon */
+//                    placesViewModel.fetchAiRecommendations(latitude, longitude, category)
+                    println("fetch ai recommendations end")
                 } catch (e: Exception) {
                     println("Recommendation response: $e")
+                    shouldShowDialog.value = false
                 }
             }
         }
+
+        if (loading) {
+            AlertDialogShow(
+                shouldShowDialog = remember { mutableStateOf(true) },
+                message = "Öneriler Alınıyor..."
+            )
+        }
+
         selectedPlace?.let { place ->
             PlaceDetailsCard(place = place, onClose = { selectedPlace = null })
         }
@@ -234,13 +250,55 @@ fun MapScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AlertDialogShow(
+    shouldShowDialog: MutableState<Boolean>,
+    message: String
+) {
+    if (shouldShowDialog.value) {
+        AlertDialog(
+            onDismissRequest = { shouldShowDialog.value = false },
 
+            shape = RoundedCornerShape(24.dp),
+            tonalElevation = 8.dp,
 
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.primary,
+            textContentColor = MaterialTheme.colorScheme.onSurface,
 
+            title = {
+                Text(
+                    text = "Bilgi",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        strokeWidth = 3.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
 
-
-
-
-
+            confirmButton = {},
+            dismissButton = {}
+        )
+    }
+}
 
 

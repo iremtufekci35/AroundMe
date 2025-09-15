@@ -12,11 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.example.aroundme.data.model.Place
+import com.example.aroundme.data.repository.FavoriteRepository
 import com.example.aroundme.utils.Translations
 
 @Composable
 fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
     val tags = place.tags
+    val favoriteRepository = FavoriteRepository()
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         Card(
             modifier = Modifier
@@ -64,7 +66,11 @@ fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = {
-
+//                        favoriteRepository.addFavorite("1",
+//                            place.id.toString(), tags?.name.toString(),onComplete = { success ->
+//                            if (success) {
+//                            }
+//                        })
                     }) {
                         Icon(
                             imageVector = Icons.Default.FavoriteBorder,
