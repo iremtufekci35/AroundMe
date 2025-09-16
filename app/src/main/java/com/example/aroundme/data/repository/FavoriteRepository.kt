@@ -1,63 +1,50 @@
 package com.example.aroundme.data.repository
 
 import com.example.aroundme.data.model.FavoriteItem
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FieldValue
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 class FavoriteRepository {
 
-    private val db = FirebaseFirestore.getInstance()
-    private val collection = db.collection("favorites")
+    private val database = FirebaseDatabase.getInstance()
+        .getReference("favorites")
 
-    fun addFavorite(
-        userId: String,
-        itemId: String,
-        itemName: String,
-        onComplete: (Boolean) -> Unit
-    ) {
-        val favorite = hashMapOf(
-            "userId" to userId,
-            "itemId" to itemId,
-            "name" to itemName,
-            "createdAt" to FieldValue.serverTimestamp()
+    fun addFavorite(userId: String, placeId: String, name: String, onComplete: (Boolean) -> Unit) {
+        val favoriteData = mapOf(
+            "placeId" to placeId,
+            "name" to name,
+            "timestamp" to System.currentTimeMillis()
         )
 
-        collection.document("${userId}_$itemId")
-            .set(favorite)
-            .addOnSuccessListener { onComplete(true) }
-            .addOnFailureListener { onComplete(false) }
+        database.child(userId)
+            .push()
+            .setValue(favoriteData)
+            .addOnCompleteListener { task ->
+                onComplete(task.isSuccessful)
+            }
     }
 
-    fun removeFavorite(userId: String, itemId: String, onComplete: (Boolean) -> Unit) {
-        collection.document("${userId}_$itemId")
-            .delete()
-            .addOnSuccessListener { onComplete(true) }
-            .addOnFailureListener { onComplete(false) }
-    }
-
-    fun getFavorites(userId: String, onResult: (List<FavoriteItem>) -> Unit) {
-        collection.whereEqualTo("userId", userId)
-            .get()
-            .addOnSuccessListener { result ->
-                val favorites = result.map { doc ->
-                    FavoriteItem(
-                        id = doc.getString("itemId") ?: "",
-                        name = doc.getString("name") ?: ""
-                    )
+    fun getFavoritesByUserId(
+        userId: String,
+        onResult: (List<FavoriteItem>) -> Unit,
+        onError: (DatabaseError) -> Unit = {}
+    ) {
+        database.child(userId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val list = mutableListOf<FavoriteItem>()
+                    for (child in snapshot.children) {
+                        child.getValue(FavoriteItem::class.java)?.let { list.add(it) }
+                    }
+                    onResult(list)
                 }
-                onResult(favorites)
-            }
-            .addOnFailureListener {
-                onResult(emptyList())
-            }
-    }
 
-    fun isFavorite(userId: String, itemId: String, onResult: (Boolean) -> Unit) {
-        collection.document("${userId}_$itemId")
-            .get()
-            .addOnSuccessListener { doc ->
-                onResult(doc.exists())
-            }
-            .addOnFailureListener { onResult(false) }
+                override fun onCancelled(error: DatabaseError) {
+                    onError(error)
+                }
+            })
+
     }
 }

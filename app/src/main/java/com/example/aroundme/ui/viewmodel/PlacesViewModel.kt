@@ -27,20 +27,28 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
     private val _error = MutableStateFlow<String?>("")
 
     private val _recommendations = MutableStateFlow<List<PlaceRecommendation>>(emptyList())
-    val recommendations: StateFlow<List<PlaceRecommendation>> = _recommendations
 
     fun searchAttractions(name: String?, category: String?) {
         viewModelScope.launch {
-            loadTouristAttractionsInternal(name)
-            val filtered = _places.value.filter { place ->
-                val matchesName =
-                    name.isNullOrBlank() || place.tags?.name?.contains(name, true) == true
-                val matchesCategory = category.isNullOrBlank() || place.tags?.tourism == category
-                matchesName && matchesCategory
+            _loading.value = true
+            try {
+                loadTouristAttractionsInternal(name)
+                val filtered = _places.value.filter { place ->
+                    val matchesName =
+                        name.isNullOrBlank() || place.tags?.name?.contains(name, true) == true
+                    val matchesCategory =
+                        category.isNullOrBlank() || place.tags?.tourism == category
+                    matchesName && matchesCategory
+                }
+                _places.value = filtered
+            } catch (e: Exception){
+                _error.value = e.message
+            } finally {
+                _loading.value = false
             }
-            _places.value = filtered
         }
     }
+
     fun fetchAiRecommendations(latitude: Double, longitude: Double, category: String) {
         viewModelScope.launch {
             _loading.value = true
@@ -59,7 +67,9 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
             }
         }
     }
-
+    fun setLoading(value: Boolean) {
+        _loading.value = value
+    }
      fun loadTouristAttractionsInternal(searchQuery: String?) {
         viewModelScope.launch {
             try {

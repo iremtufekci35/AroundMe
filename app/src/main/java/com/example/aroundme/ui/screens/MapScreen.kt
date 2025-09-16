@@ -1,8 +1,8 @@
 package com.example.aroundme.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -10,43 +10,40 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.aroundme.data.model.Place
+import com.example.aroundme.ui.cards.PlaceDetailsCard
 import com.example.aroundme.ui.viewmodel.PlacesViewModel
+import com.google.firebase.auth.FirebaseAuth
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import com.example.aroundme.data.model.Place
-import com.example.aroundme.ui.cards.PlaceDetailsCard
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.navigation.NavHostController
-import com.example.aroundme.ui.viewmodel.UserViewModel
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import java.io.File
 
 @Composable
 fun MapScreen(
     latitude: Double,
     longitude: Double,
+    onBottomBarVisibleChange: (Boolean) -> Unit,
     placesViewModel: PlacesViewModel = hiltViewModel(),
-    navController: NavHostController
 ) {
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val userViewModel: UserViewModel = hiltViewModel()
     var shouldShowDialog = remember { mutableStateOf(false) }
     val loading by placesViewModel.loading.collectAsState()
-    val recommendations by placesViewModel.recommendations.collectAsState()
+    var showBottomBar by remember { mutableStateOf(false) }
+
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
+    showBottomBar = userId != null
 
     LaunchedEffect(Unit) {
         Configuration.getInstance().apply {
@@ -63,10 +60,8 @@ fun MapScreen(
             setMultiTouchControls(true)
             controller.setZoom(15.0)
             controller.setCenter(GeoPoint(latitude, longitude))
-            setPadding(0, 0, 0, 100)
         }
     }
-
 
     val places by placesViewModel.places.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
@@ -74,6 +69,10 @@ fun MapScreen(
     val categories = listOf("Tarihi", "Doğa", "Müze", "Eğlence, Yemek")
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     val userMarker = remember { Marker(mapView) }
+
+    LaunchedEffect(selectedPlace) {
+        onBottomBarVisibleChange(selectedPlace == null)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
@@ -99,6 +98,7 @@ fun MapScreen(
                 map.overlays.add(marker)
             }
         }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -131,6 +131,7 @@ fun MapScreen(
                             if (searchQuery.isBlank()) {
                                 mapView.overlays.removeAll { it is Marker && it != userMarker }
                             } else {
+                                placesViewModel.setLoading(true)
                                 placesViewModel.searchAttractions(searchQuery, selectedCategory)
                                 val firstPlace = places.firstOrNull {
                                     it.tags?.name?.contains(searchQuery, true) == true
@@ -164,7 +165,7 @@ fun MapScreen(
                         selected = isSelected,
                         onClick = {
                             selectedCategory = if (isSelected) null else category
-//                            placesViewModel.searchAttractions(searchQuery, selectedCategory)
+                            // placesViewModel.searchAttractions(searchQuery, selectedCategory)
                         },
                         label = { Text(category, color = Color.Black) },
                         shape = RoundedCornerShape(16.dp),
@@ -175,7 +176,6 @@ fun MapScreen(
                             selectedLabelColor = Color.Black
                         )
                     )
-
                 }
             }
         }
@@ -185,7 +185,7 @@ fun MapScreen(
                 try {
                     println("fetch ai recommendations")
                     /** too many request and can not show location lat and lon */
-//                    placesViewModel.fetchAiRecommendations(latitude, longitude, category)
+                    // placesViewModel.fetchAiRecommendations(latitude, longitude, category)
                     println("fetch ai recommendations end")
                 } catch (e: Exception) {
                     println("Recommendation response: $e")
@@ -196,7 +196,6 @@ fun MapScreen(
 
         if (loading) {
             AlertDialogShow(
-                shouldShowDialog = remember { mutableStateOf(true) },
                 message = "Öneriler Alınıyor..."
             )
         }
@@ -204,69 +203,21 @@ fun MapScreen(
         selectedPlace?.let { place ->
             PlaceDetailsCard(place = place, onClose = { selectedPlace = null })
         }
-
-        if (selectedPlace == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .background(Color.White)
-                    .align(Alignment.BottomCenter),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        IconButton(onClick = { /* Hesap */ }) {
-                            Icon(Icons.Default.Person, contentDescription = "Hesap")
-                        }
-                        Text("Hesap", style = MaterialTheme.typography.labelSmall)
-                    }
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        IconButton(onClick = { /* Favoriler */ }) {
-                            Icon(Icons.Default.Favorite, contentDescription = "Favoriler")
-                        }
-                        Text("Favoriler", style = MaterialTheme.typography.labelSmall)
-                    }
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        IconButton(onClick = {
-                            userViewModel.logoutUser()
-                            navController.navigate("login") {
-                                popUpTo(0) { inclusive = true }
-                            }
-                        }) {
-                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Çıkış")
-                        }
-                        Text("Çıkış", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
-        }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlertDialogShow(
-    shouldShowDialog: MutableState<Boolean>,
     message: String
 ) {
-    if (shouldShowDialog.value) {
         AlertDialog(
-            onDismissRequest = { shouldShowDialog.value = false },
-
+            onDismissRequest = { },
             shape = RoundedCornerShape(24.dp),
             tonalElevation = 8.dp,
-
             containerColor = MaterialTheme.colorScheme.surface,
             titleContentColor = MaterialTheme.colorScheme.primary,
             textContentColor = MaterialTheme.colorScheme.onSurface,
-
             title = {
                 Text(
                     text = "Bilgi",
@@ -294,11 +245,7 @@ fun AlertDialogShow(
                     )
                 }
             },
-
             confirmButton = {},
             dismissButton = {}
         )
-    }
 }
-
-

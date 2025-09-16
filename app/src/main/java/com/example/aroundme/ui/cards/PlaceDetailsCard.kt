@@ -7,6 +7,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -14,11 +16,15 @@ import androidx.compose.ui.unit.dp
 import com.example.aroundme.data.model.Place
 import com.example.aroundme.data.repository.FavoriteRepository
 import com.example.aroundme.utils.Translations
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
     val tags = place.tags
     val favoriteRepository = FavoriteRepository()
+    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val isFavorite = remember { mutableStateOf(false) }
+
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         Card(
             modifier = Modifier
@@ -66,15 +72,18 @@ fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = {
-//                        favoriteRepository.addFavorite("1",
-//                            place.id.toString(), tags?.name.toString(),onComplete = { success ->
-//                            if (success) {
-//                            }
-//                        })
+                        favoriteRepository.addFavorite(
+                            userId,
+                            place.id.toString(),
+                            tags?.name.orEmpty()
+                        ) { success ->
+                            if (success) isFavorite.value = true
+                        }
                     }) {
                         Icon(
-                            imageVector = Icons.Default.FavoriteBorder,
-                            contentDescription = "Ekle",
+                            imageVector = if (isFavorite.value)
+                                Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Favori Ekle",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -86,7 +95,16 @@ fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
                         )
                     }
                 }
-
+                Column( modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.StarOutline,
+                        contentDescription = "",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
                 Spacer(modifier = Modifier.height(16.dp))
 
                 val infoList = listOf(
@@ -168,4 +186,3 @@ fun InfoRow(icon: ImageVector, label: String, value: String) {
         }
     }
 }
-
