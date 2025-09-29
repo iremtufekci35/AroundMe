@@ -6,9 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -60,7 +58,7 @@ fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
                 ) {
                     Icon(
                         imageVector = Icons.Default.Place,
-                        contentDescription = "",
+                        contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(28.dp)
                     )
@@ -81,8 +79,8 @@ fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
                         }
                     }) {
                         Icon(
-                            imageVector = if (isFavorite.value)
-                                Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            imageVector = if (isFavorite.value) Icons.Default.Favorite
+                            else Icons.Default.FavoriteBorder,
                             contentDescription = "Favori Ekle",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -125,20 +123,21 @@ fun PlaceDetailsCard(place: Place.Element, onClose: () -> Unit) {
                 )
 
                 infoList.forEach { (value, icon, label) ->
-                    value?.takeUnless { it.isBlank() }?.let {
-                        val translated = when (label) {
-                            "Tarihî" -> Translations.translate(Translations.historicMap, it)
-                            "Tesis / Hizmet" -> Translations.translate(Translations.amenityMap, it)
-                            "Mutfak" -> Translations.translate(Translations.cuisineMap, it)
-                            "Sağlık" -> Translations.translate(Translations.healthcareMap, it)
-                            "Yer" -> Translations.translate(Translations.placeMap, it)
-                            "Toplu Taşıma" -> Translations.translate(Translations.publicTransportMap, it)
-                            "Tren İstasyonu", "Tren" -> Translations.translate(Translations.railwayMap, it)
-                            "Mağaza" -> Translations.translate(Translations.shopMap, it)
-                            "Turizm" -> Translations.translate(Translations.tourismMap, it)
-                            else -> it
+                    value?.takeUnless { it.isBlank() }?.let { originalText ->
+
+                        val translatedText = remember { mutableStateOf<String?>(null) }
+
+                        LaunchedEffect(originalText) {
+                            Translations.translateText(originalText) { result ->
+                                translatedText.value = result
+                            }
                         }
-                        InfoRow(icon = icon, label = label, value = translated ?: it)
+
+                        InfoRow(
+                            icon = icon,
+                            label = label,
+                            value = translatedText.value ?: originalText
+                        )
                     }
                 }
             }

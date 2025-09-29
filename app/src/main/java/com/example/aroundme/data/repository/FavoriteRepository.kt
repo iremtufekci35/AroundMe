@@ -45,6 +45,5 @@ class FavoriteRepository {
                     onError(error)
                 }
             })
-
     }
 }

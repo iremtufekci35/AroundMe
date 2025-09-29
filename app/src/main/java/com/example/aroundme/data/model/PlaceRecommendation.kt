@@ -1,10 +1,12 @@
 package com.example.aroundme.data.model
 
 data class PlaceRecommendation(
-    val name: String,
+    var name: String,
     val description: String,
     val historicalPeriod: String,
     val distance: String?,
-    val travelTime: String? = null
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
+
 

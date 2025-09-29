@@ -98,5 +98,8 @@ dependencies {
 
     implementation(platform(libs.androidx.compose.bom.v20250800))
     implementation(libs.androidx.material.icons.extended)
+    implementation (libs.translate)
+
+
 
 }

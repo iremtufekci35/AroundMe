@@ -1,5 +1,14 @@
 package com.example.aroundme.ui.screens
 
+import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -10,7 +19,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
@@ -184,8 +195,7 @@ fun MapScreen(
             selectedCategory?.let { category ->
                 try {
                     println("fetch ai recommendations")
-                    /** too many request and can not show location lat and lon */
-                    // placesViewModel.fetchAiRecommendations(latitude, longitude, category)
+                     placesViewModel.fetchAiRecommendations(latitude, longitude, category)
                     println("fetch ai recommendations end")
                 } catch (e: Exception) {
                     println("Recommendation response: $e")
@@ -195,7 +205,7 @@ fun MapScreen(
         }
 
         if (loading) {
-            AlertDialogShow(
+            FancyLoadingDialog(
                 message = "Öneriler Alınıyor..."
             )
         }
@@ -206,46 +216,78 @@ fun MapScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlertDialogShow(
-    message: String
-) {
-        AlertDialog(
-            onDismissRequest = { },
+fun FancyLoadingDialog(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .wrapContentSize(Alignment.Center)
+    ) {
+        val scaleAnim = remember { Animatable(0.8f) }
+        LaunchedEffect(Unit) {
+            scaleAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing)
+            )
+        }
+
+        Card(
             shape = RoundedCornerShape(24.dp),
-            tonalElevation = 8.dp,
-            containerColor = MaterialTheme.colorScheme.surface,
-            titleContentColor = MaterialTheme.colorScheme.primary,
-            textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = {
-                Text(
-                    text = "Bilgi",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = message,
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        strokeWidth = 3.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+            elevation = CardDefaults.cardElevation(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            modifier = Modifier
+                .padding(24.dp)
+                .wrapContentSize()
+                .graphicsLayer {
+                    scaleX = scaleAnim.value
+                    scaleY = scaleAnim.value
                 }
-            },
-            confirmButton = {},
-            dismissButton = {}
-        )
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .widthIn(min = 220.dp, max = 320.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                val infiniteTransition = rememberInfiniteTransition()
+                val iconScale by infiniteTransition.animateFloat(
+                    initialValue = 0.9f,
+                    targetValue = 1.2f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(700, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    )
+                )
+                val iconColor by infiniteTransition.animateColor(
+                    initialValue = MaterialTheme.colorScheme.primary,
+                    targetValue = MaterialTheme.colorScheme.secondary,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(700, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    )
+                )
+
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier
+                        .size(50.dp)
+                        .scale(iconScale)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(5.dp))
+            }
+        }
+    }
 }
+
+

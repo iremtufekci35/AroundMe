@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.aroundme.data.model.Place
 import com.example.aroundme.data.model.PlaceRecommendation
 import com.example.aroundme.data.remote.RetrofitInstance
+import com.example.aroundme.utils.Translations
 import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
 import com.google.firebase.ai.type.GenerativeBackend
@@ -41,7 +42,7 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
                     matchesName && matchesCategory
                 }
                 _places.value = filtered
-            } catch (e: Exception){
+            } catch (e: Exception) {
                 _error.value = e.message
             } finally {
                 _loading.value = false
@@ -50,27 +51,47 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
     }
 
     fun fetchAiRecommendations(latitude: Double, longitude: Double, category: String) {
+        println("fetch ai 1 category $category")
         viewModelScope.launch {
             _loading.value = true
             try {
-                val recommendationResponse = getRecommendationsAi(latitude, longitude, category)
-                _recommendations.value = recommendationResponse
 
-                recommendationResponse.forEach { rec ->
-                    loadTouristAttractionsInternal(rec.name)
+                val recommendationList = getRecommendationsAi(latitude, longitude, category)
+
+                println("rec list: $recommendationList")
+                val translatedRecommendations = mutableListOf<PlaceRecommendation>()
+                println("rec list 2: $translatedRecommendations")
+                recommendationList.forEach { rec ->
+                    val cleanedName = rec.name.replace(Regex("\\s*\\([^)]*\\)"), "").trim()
+
+                    Translations.translateText(cleanedName) { translatedName ->
+                        translatedRecommendations.add(
+                            rec.copy(name = translatedName)
+                        )
+
+                        if (translatedRecommendations.size == recommendationList.size) {
+                            println("Translated & cleaned recommendations: $translatedRecommendations")
+                            _recommendations.value = translatedRecommendations
+                            showAiRecommendationsOnMap(translatedRecommendations)
+                        }
+                    }
                 }
-                showAiRecommendationsOnMap(recommendationResponse)
             } catch (e: Exception) {
                 _error.value = e.message
+                println("AI fetch error: $e")
             } finally {
                 _loading.value = false
             }
         }
     }
+
     fun setLoading(value: Boolean) {
         _loading.value = value
     }
-     fun loadTouristAttractionsInternal(searchQuery: String?) {
+
+    fun loadTouristAttractionsInternal(searchQuery: String?) {
+        /** here do not use static lat and lon */
+        println("query burada: $searchQuery")
         viewModelScope.launch {
             try {
                 val query = searchQuery?.let {
@@ -142,6 +163,7 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
                         }
                     }
                     _places.value = list
+                    println("AAAAAAAAAAAAAAAAAAAAAAA ${_places.value}")
 
                 }
             } catch (e: Exception) {
@@ -149,127 +171,56 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
             }
         }
     }
-    suspend fun showAiRecommendationsOnMap(recommendations: List<PlaceRecommendation>) {
+
+    fun showAiRecommendationsOnMap(recommendations: List<PlaceRecommendation>) {
+        println("showAiRecommendationsOnMap $recommendations")
         val newPlaces = recommendations.mapNotNull { rec ->
-            try {
-                val query = """
-                [out:json];
-                node
-                  [name~"${rec.name}", i]
-                  (38.40,27.10,38.45,27.20);
-                out;
-            """.trimIndent()
+            val lat = rec.latitude
+            val lon = rec.longitude
 
-                val response = RetrofitInstance.api.getTouristAttractions(query)
-                if (response.isSuccessful) {
-                    val elements = response.body()?.getAsJsonArray("elements") ?: return@mapNotNull null
-                    val first = elements.firstOrNull() ?: return@mapNotNull null
-                    val obj = JSONObject(first.toString())
-                    val lat = obj.optDouble("lat")
-                    val lon = obj.optDouble("lon")
-
-                    Place.Element(
-                        id = obj.optLong("id"),
-                        lat = lat,
-                        lon = lon,
-                        tags = Place.Element.Tags(
-                            addrHousenumber = null,
-                            addrStreet = null,
-                            amenity = null,
-                            bench = null,
-                            bus = null,
-                            cuisine = null,
-                            healthcare = null,
-                            highway = null,
-                            historic = null,
-                            name = rec.name,
-                            openingHours = null,
-                            `operator` = null,
-                            operatorWikidata = null,
-                            operatorWikipedia = null,
-                            place = null,
-                            publicTransport = null,
-                            railway = null,
-                            ref = null,
-                            shelter = null,
-                            shop = null,
-                            tourism = null,
-                            train = null,
-                            wikidata = null,
-                            wikimediaCommons = null,
-                            wikipedia = null,
-                            wikipediaArz = null,
-                            wikipediaEn = null
-                        ),
-                        type = "ai"
-                    )
-
-                } else null
-            } catch (e: Exception) {
-                e.printStackTrace()
+            if (lat != null && lon != null) {
+                Place.Element(
+                    id = 0L,
+                    lat = lat,
+                    lon = lon,
+                    tags = Place.Element.Tags(
+                        name = rec.name,
+                        addrHousenumber = null,
+                        addrStreet = null,
+                        amenity = null,
+                        bench = null,
+                        bus = null,
+                        cuisine = null,
+                        healthcare = null,
+                        highway = null,
+                        historic = null,
+                        openingHours = null,
+                        `operator` = null,
+                        operatorWikidata = null,
+                        operatorWikipedia = null,
+                        place = null,
+                        publicTransport = null,
+                        railway = null,
+                        ref = null,
+                        shelter = null,
+                        shop = null,
+                        tourism = null,
+                        train = null,
+                        wikidata = null,
+                        wikimediaCommons = null,
+                        wikipedia = null,
+                        wikipediaArz = null,
+                        wikipediaEn = null
+                    ),
+                    type = "ai"
+                )
+            } else {
                 null
             }
         }
 
         _places.value = _places.value + newPlaces
     }
-
-    fun parseAiResponse(text: String): List<PlaceRecommendation> {
-        val lines = text.lines()
-        val places = mutableListOf<PlaceRecommendation>()
-
-        var currentName = ""
-        var currentDesc = ""
-        var currentSignificance = ""
-        var currentProximity: String? = null
-
-        val titleRegex = Regex("""\d+\.\s*\*\*(.+?)\*\*:?(\s*\((.+?)\))?""")
-        val labelValueRegex = Regex("""\*\*\s*(.+?)\s*:\s*\*\*\s*(.+)""")
-
-        lines.forEach { line ->
-            titleRegex.find(line)?.let { match ->
-                if (currentName.isNotEmpty()) {
-                    places.add(
-                        PlaceRecommendation(
-                            currentName,
-                            currentDesc,
-                            currentSignificance,
-                            currentProximity
-                        )
-                    )
-                }
-
-                currentName = match.groupValues[1].trim()
-                currentDesc = ""
-                currentSignificance = ""
-                currentProximity = match.groupValues.getOrNull(3)?.trim()
-            }
-
-            labelValueRegex.find(line)?.let { match ->
-                val (label, value) = match.destructured
-                when (label.lowercase()) {
-                    "description" -> currentDesc = value
-                    "historical significance" -> currentSignificance = value
-                    "proximity" -> currentProximity = value
-                }
-            }
-        }
-
-        if (currentName.isNotEmpty()) {
-            places.add(
-                PlaceRecommendation(
-                    currentName,
-                    currentDesc,
-                    currentSignificance,
-                    currentProximity
-                )
-            )
-        }
-
-        println("places: $places")
-        return places
-    }
-
     suspend fun getRecommendationsAi(
         latitude: Double,
         longitude: Double,
@@ -277,18 +228,44 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
     ): List<PlaceRecommendation> {
         val model = Firebase.ai(backend = GenerativeBackend.googleAI())
             .generativeModel("gemini-2.5-flash")
+        val basePrompt = """
+        Suggest $category places near latitude: $latitude and longitude: $longitude.
+        Return as a valid JSON array with fields:
+        name, description, historicalPeriod, distance, latitude, longitude
+    """.trimIndent()
 
-        val basePrompt =
-            "Suggest $category places near latitude: $latitude and longitude: $longitude"
-        val prompt = if (!category.isNullOrBlank()) {
-            "$basePrompt that belong to the category: $category"
-        } else {
-            basePrompt
+        val prompt = if (!category.isNullOrBlank()) "$basePrompt that belong to category $category" else basePrompt
+        val response = model.generateContent(prompt)
+
+        println("AI response raw: ${response.text}")
+
+        val cleanedJson = response.text!!
+            .trim()
+            .removePrefix("```json")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+
+        println("Cleaned JSON: $cleanedJson")
+
+        val jsonArray = org.json.JSONArray(cleanedJson)
+        val list = mutableListOf<PlaceRecommendation>()
+
+        for (i in 0 until jsonArray.length()) {
+            val obj = jsonArray.getJSONObject(i)
+            list.add(
+                PlaceRecommendation(
+                    name = obj.optString("name"),
+                    description = obj.optString("description"),
+                    historicalPeriod = obj.optString("historicalPeriod"),
+                    distance = obj.optString("distance"),
+                    latitude = obj.optDouble("latitude"),
+                    longitude = obj.optDouble("longitude")
+                )
+            )
         }
 
-        val response = model.generateContent(prompt)
-        println("AI response: ${response.text}")
-
-        return parseAiResponse(response.text.orEmpty())
+        return list
     }
+
 }
