@@ -1,5 +1,8 @@
 package com.example.aroundme.ui.screens
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,12 +49,16 @@ import androidx.navigation.NavHostController
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.aroundme.R
 import com.example.aroundme.data.model.User
 import com.example.aroundme.ui.viewmodel.UserViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.delay
 
 @Composable
@@ -227,13 +234,43 @@ fun LoginScreen(navController: NavHostController) {
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+                val context = LocalContext.current
+
+                val googleLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.StartActivityForResult()
+                ) { result ->
+                    val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    try {
+                        val account = task.getResult(ApiException::class.java)
+                        account?.idToken?.let { idToken ->
+                            userViewModel.signInWithGoogle(idToken) { success ->
+                                if (success) {
+                                    navController.navigate("map") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                } else {
+                                    Toast.makeText(context, "Google login başarısız", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    } catch (e: ApiException) {
+                        Toast.makeText(context, "Google login iptal veya hata", Toast.LENGTH_SHORT).show()
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Button(
-                        onClick = { /* Google login */ },
+                        onClick = {
+                            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                .requestIdToken(context.getString(R.string.default_web_client_id))
+                                .requestEmail()
+                                .build()
+                            val googleSignInClient = GoogleSignIn.getClient(context, gso)
+                            googleLauncher.launch(googleSignInClient.signInIntent)
+                        },
                         shape = RoundedCornerShape(50),
                         modifier = Modifier.size(40.dp),
                         contentPadding = PaddingValues(0.dp)

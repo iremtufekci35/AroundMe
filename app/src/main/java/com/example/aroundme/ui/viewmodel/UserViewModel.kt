@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.aroundme.data.model.User
 import com.example.aroundme.utils.CommonUtils
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -82,6 +83,13 @@ class UserViewModel @Inject constructor(
                 _loginStatus.value = CommonUtils.getFirebaseErrorMessage(e)
             }
         }
+    }
+    fun signInWithGoogle(idToken: String, onResult: (Boolean) -> Unit) {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { result ->
+                onResult(result.isSuccessful)
+            }
     }
 
     fun clearLoginStatus() { _loginStatus.value = null }

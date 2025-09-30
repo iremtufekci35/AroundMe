@@ -10,6 +10,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
 import com.google.firebase.ai.type.GenerativeBackend
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -45,18 +46,19 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
             } catch (e: Exception) {
                 _error.value = e.message
             } finally {
+                delay(500)
                 _loading.value = false
             }
         }
     }
 
-    fun fetchAiRecommendations(latitude: Double, longitude: Double, category: String) {
+    fun fetchAiRecommendations(latitude: Double, longitude: Double, category: String, keyword: String?) {
         println("fetch ai 1 category $category")
         viewModelScope.launch {
             _loading.value = true
             try {
 
-                val recommendationList = getRecommendationsAi(latitude, longitude, category)
+                val recommendationList = getRecommendationsAi(latitude, longitude, category, keyword)
 
                 println("rec list: $recommendationList")
                 val translatedRecommendations = mutableListOf<PlaceRecommendation>()
@@ -163,7 +165,6 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
                         }
                     }
                     _places.value = list
-                    println("AAAAAAAAAAAAAAAAAAAAAAA ${_places.value}")
 
                 }
             } catch (e: Exception) {
@@ -224,33 +225,35 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
     suspend fun getRecommendationsAi(
         latitude: Double,
         longitude: Double,
-        category: String? = null
+        category: String? = null,
+        keyword: String? = null
     ): List<PlaceRecommendation> {
         val model = Firebase.ai(backend = GenerativeBackend.googleAI())
             .generativeModel("gemini-2.5-flash")
-        val basePrompt = """
-        Suggest $category places near latitude: $latitude and longitude: $longitude.
-        Return as a valid JSON array with fields:
-        name, description, historicalPeriod, distance, latitude, longitude
-    """.trimIndent()
 
-        val prompt = if (!category.isNullOrBlank()) "$basePrompt that belong to category $category" else basePrompt
-        val response = model.generateContent(prompt)
+        val basePrompt = buildString {
+            append("Suggest up to 5 places near latitude: $latitude and longitude: $longitude")
+            if (!category.isNullOrBlank()) append(" in category $category")
+            if (!keyword.isNullOrBlank()) append(" matching keyword $keyword")
+            append(". Respond ONLY with a JSON array containing: name, latitude, longitude, distance. No extra text or explanation.")
+        }
 
+        val response = model.generateContent(basePrompt)
+        println("Prompt: $basePrompt")
         println("AI response raw: ${response.text}")
 
-        val cleanedJson = response.text!!
-            .trim()
-            .removePrefix("```json")
-            .removePrefix("```")
-            .removeSuffix("```")
-            .trim()
+        val cleanedJson = response.text
+            ?.trim()
+            ?.removePrefix("```json")
+            ?.removePrefix("```")
+            ?.removeSuffix("```")
+            ?.trim()
+            ?: "[]"
 
         println("Cleaned JSON: $cleanedJson")
 
         val jsonArray = org.json.JSONArray(cleanedJson)
         val list = mutableListOf<PlaceRecommendation>()
-
         for (i in 0 until jsonArray.length()) {
             val obj = jsonArray.getJSONObject(i)
             list.add(
@@ -267,5 +270,4 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
 
         return list
     }
-
 }

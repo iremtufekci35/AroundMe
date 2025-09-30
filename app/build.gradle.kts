@@ -73,6 +73,7 @@ dependencies {
     implementation (libs.play.services.location)
     implementation (libs.play.services.maps)
     implementation (libs.play.services.location.v2101)
+    implementation (libs.play.services.auth)
 
     // For map
     implementation (libs.osmdroid.android)
@@ -99,7 +100,5 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom.v20250800))
     implementation(libs.androidx.material.icons.extended)
     implementation (libs.translate)
-
-
 
 }

@@ -13,24 +13,28 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.aroundme.data.model.Place
-import com.example.aroundme.ui.cards.PlaceDetailsCard
+import com.example.aroundme.ui.cards.PlaceDetailsBottomSheet
 import com.example.aroundme.ui.viewmodel.PlacesViewModel
 import com.google.firebase.auth.FirebaseAuth
 import org.osmdroid.config.Configuration
@@ -49,12 +53,14 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    var shouldShowDialog = remember { mutableStateOf(false) }
     val loading by placesViewModel.loading.collectAsState()
-    var showBottomBar by remember { mutableStateOf(false) }
-
+    var selectedPlace by remember { mutableStateOf<Place.Element?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    val categories = listOf("Tarihi", "Doğa", "Müze", "Eğlence, Yemek")
     val userId = FirebaseAuth.getInstance().currentUser?.uid
-    showBottomBar = userId != null
+    val showBottomBar = userId != null
+    LaunchedEffect(selectedPlace) { onBottomBarVisibleChange(selectedPlace == null) }
 
     LaunchedEffect(Unit) {
         Configuration.getInstance().apply {
@@ -74,41 +80,42 @@ fun MapScreen(
         }
     }
 
-    val places by placesViewModel.places.collectAsState()
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedPlace by remember { mutableStateOf<Place.Element?>(null) }
-    val categories = listOf("Tarihi", "Doğa", "Müze", "Eğlence, Yemek")
-    var selectedCategory by remember { mutableStateOf<String?>(null) }
-    val userMarker = remember { Marker(mapView) }
-
-    LaunchedEffect(selectedPlace) {
-        onBottomBarVisibleChange(selectedPlace == null)
+    val userMarker = remember {
+        Marker(mapView).apply {
+            position = GeoPoint(latitude, longitude)
+            title = "Buradasınız"
+            mapView.overlays.add(this)
+        }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val places by placesViewModel.places.collectAsState()
 
-        AndroidView(
-            factory = { mapView },
-            modifier = Modifier.fillMaxSize() .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+    LaunchedEffect(places) {
+        mapView.overlays.removeAll { it is Marker && it != userMarker }
 
-        ) { map ->
-            userMarker.position = GeoPoint(latitude, longitude)
-            userMarker.title = "Buradasınız"
-            if (!map.overlays.contains(userMarker)) map.overlays.add(userMarker)
-
-            map.overlays.removeAll { it is Marker && it != userMarker }
-
-            places.forEach { place ->
-                val marker = Marker(map)
-                marker.position = GeoPoint(place.lat ?: 0.0, place.lon ?: 0.0)
-                marker.title = place.tags?.name ?: "Gezilecek Yer"
-                marker.setOnMarkerClickListener { _, _ ->
+        places.forEach { place ->
+            val marker = Marker(mapView).apply {
+                position = GeoPoint(place.lat ?: 0.0, place.lon ?: 0.0)
+                title = place.tags?.name ?: "Gezilecek Yer"
+                setOnMarkerClickListener { _, _ ->
                     selectedPlace = place
                     true
                 }
-                map.overlays.add(marker)
             }
+            mapView.overlays.add(marker)
         }
+        mapView.invalidate()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clipToBounds()
+    ) {
+        AndroidView(
+            factory = { mapView },
+            modifier = Modifier.fillMaxSize()
+        )
 
         Column(
             modifier = Modifier
@@ -137,31 +144,40 @@ fun MapScreen(
                     unfocusedIndicatorColor = Color.Transparent
                 ),
                 trailingIcon = {
-                    IconButton(
-                        onClick = {
-                            if (searchQuery.isBlank()) {
-                                mapView.overlays.removeAll { it is Marker && it != userMarker }
-                            } else {
-                                placesViewModel.setLoading(true)
-                                placesViewModel.searchAttractions(searchQuery, selectedCategory)
-                                val firstPlace = places.firstOrNull {
-                                    it.tags?.name?.contains(searchQuery, true) == true
-                                }
-                                firstPlace?.let {
-                                    mapView.controller.animateTo(GeoPoint(it.lat ?: 0.0, it.lon ?: 0.0))
-                                    mapView.controller.setZoom(15.0)
-                                }
-                            }
-                            keyboardController?.hide()
-                        }
-                    ) {
+                    IconButton(onClick = {
+                        performSearch(
+                            searchQuery,
+                            selectedCategory,
+                            placesViewModel,
+                            mapView,
+                            userMarker,
+                            places
+                        )
+                        keyboardController?.hide()
+                    }) {
                         Icon(
-                            imageVector = Icons.Default.Search,
+                            Icons.Default.Search,
                             contentDescription = "Ara",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                }
+                },
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Search
+                ),
+                keyboardActions = KeyboardActions(
+                    onSearch = {
+                        performSearch(
+                            searchQuery,
+                            selectedCategory,
+                            placesViewModel,
+                            mapView,
+                            userMarker,
+                            places
+                        )
+                        keyboardController?.hide()
+                    }
+                )
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -174,10 +190,7 @@ fun MapScreen(
                     val isSelected = selectedCategory == category
                     FilterChip(
                         selected = isSelected,
-                        onClick = {
-                            selectedCategory = if (isSelected) null else category
-                            // placesViewModel.searchAttractions(searchQuery, selectedCategory)
-                        },
+                        onClick = { selectedCategory = if (isSelected) null else category },
                         label = { Text(category, color = Color.Black) },
                         shape = RoundedCornerShape(16.dp),
                         colors = FilterChipDefaults.filterChipColors(
@@ -194,24 +207,51 @@ fun MapScreen(
         LaunchedEffect(selectedCategory) {
             selectedCategory?.let { category ->
                 try {
-                    println("fetch ai recommendations")
-                     placesViewModel.fetchAiRecommendations(latitude, longitude, category)
-                    println("fetch ai recommendations end")
+                    placesViewModel.fetchAiRecommendations(
+                        latitude,
+                        longitude,
+                        category,
+                        searchQuery
+                    )
                 } catch (e: Exception) {
                     println("Recommendation response: $e")
-                    shouldShowDialog.value = false
                 }
             }
         }
-
         if (loading) {
-            FancyLoadingDialog(
-                message = "Öneriler Alınıyor..."
-            )
+            val msg = if (!selectedCategory.isNullOrBlank()) {
+                "Öneriler Alınıyor..."
+            } else {
+                "Arama Yapılıyor..."
+            }
+            FancyLoadingDialog(message = msg)
         }
 
         selectedPlace?.let { place ->
-            PlaceDetailsCard(place = place, onClose = { selectedPlace = null })
+            PlaceDetailsBottomSheet(
+                place = place,
+                onClose = { selectedPlace = null }
+            )        }
+    }
+}
+
+private fun performSearch(
+    query: String,
+    selectedCategory: String?,
+    placesViewModel: PlacesViewModel,
+    mapView: MapView,
+    userMarker: Marker,
+    places: List<Place.Element>
+) {
+    if (query.isBlank()) {
+        mapView.overlays.removeAll { it is Marker && it != userMarker }
+    } else {
+        placesViewModel.setLoading(true)
+        placesViewModel.searchAttractions(query, selectedCategory)
+        val firstPlace = places.firstOrNull { it.tags?.name?.contains(query, true) == true }
+        firstPlace?.let {
+            mapView.controller.animateTo(GeoPoint(it.lat ?: 0.0, it.lon ?: 0.0))
+            mapView.controller.setZoom(15.0)
         }
     }
 }
@@ -221,7 +261,7 @@ fun FancyLoadingDialog(message: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f))
+            .background(Color.Transparent)
             .wrapContentSize(Alignment.Center)
     ) {
         val scaleAnim = remember { Animatable(0.8f) }

@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.aroundme.ui.screens.MapScreen
 import com.example.aroundme.ui.theme.AroundMeTheme
@@ -121,7 +122,7 @@ fun BottomBar(navController: NavController, userViewModel: UserViewModel) {
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp)
-            .background(MaterialTheme.colorScheme.surface),
+            .background(Color.White),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -133,9 +134,9 @@ fun BottomBar(navController: NavController, userViewModel: UserViewModel) {
                 IconButton(onClick = {
                     navController.navigate("map")
                 }) {
-                    Icon(Icons.Default.Home, contentDescription = "Ana Sayfa")
+                    Icon(Icons.Default.Home, contentDescription = "Ana Sayfa", tint = MaterialTheme.colorScheme.primary)
                 }
-                Text("Ana Sayfa", style = MaterialTheme.typography.labelSmall)
+//                Text("Ana Sayfa", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = {
@@ -146,9 +147,9 @@ fun BottomBar(navController: NavController, userViewModel: UserViewModel) {
                         navController.navigate("login")
                     }
                 }) {
-                    Icon(Icons.Default.Favorite, contentDescription = "Favoriler")
+                    Icon(Icons.Default.Favorite, contentDescription = "Favoriler", tint = MaterialTheme.colorScheme.primary)
                 }
-                Text("Favoriler", style = MaterialTheme.typography.labelSmall)
+//                Text("Favoriler", style = MaterialTheme.typography.labelSmall,color = MaterialTheme.colorScheme.primary)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = {
@@ -157,9 +158,9 @@ fun BottomBar(navController: NavController, userViewModel: UserViewModel) {
                         popUpTo(0) { inclusive = true }
                     }
                 }) {
-                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Çıkış")
+                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Çıkış", tint = MaterialTheme.colorScheme.primary)
                 }
-                Text("Çıkış", style = MaterialTheme.typography.labelSmall)
+//                Text("Çıkış", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             }
         }
     }
