@@ -60,6 +60,7 @@ fun MapScreen(
     val categories = listOf("Tarihi", "Doğa", "Müze", "Eğlence, Yemek")
     val userId = FirebaseAuth.getInstance().currentUser?.uid
     val showBottomBar = userId != null
+    val showDialog by placesViewModel.showDialog.collectAsState()
     LaunchedEffect(selectedPlace) { onBottomBarVisibleChange(selectedPlace == null) }
 
     LaunchedEffect(Unit) {

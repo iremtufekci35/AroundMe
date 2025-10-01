@@ -2,7 +2,9 @@ package com.example.aroundme.ui.cards
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -12,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.example.aroundme.data.model.Place
+import com.example.aroundme.data.repository.CommentRepository
 import com.example.aroundme.data.repository.FavoriteRepository
 import com.example.aroundme.utils.Translations
 import com.google.firebase.auth.FirebaseAuth
@@ -36,20 +39,27 @@ fun PlaceDetailsBottomSheet(
 private fun PlaceDetailsContent(place: Place.Element, onClose: () -> Unit) {
     val tags = place.tags
     val favoriteRepository = FavoriteRepository()
-    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val commentRepository = CommentRepository()
+    val firebaseUser = FirebaseAuth.getInstance().currentUser
+    val userId = firebaseUser?.uid ?: ""
+    val userName = firebaseUser?.displayName ?: "Anonim"
     val isFavorite = remember { mutableStateOf(false) }
+    var commentText by remember { mutableStateOf("") }
+    var rating by remember { mutableIntStateOf(0) }
+    var isCommentSent by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
                 .width(60.dp)
                 .height(6.dp)
-                .padding(bottom = 16.dp)
+                .padding(bottom = 12.dp)
                 .background(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(50)
@@ -64,7 +74,7 @@ private fun PlaceDetailsContent(place: Place.Element, onClose: () -> Unit) {
                 imageVector = Icons.Default.Place,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
@@ -95,7 +105,7 @@ private fun PlaceDetailsContent(place: Place.Element, onClose: () -> Unit) {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         val infoList = listOf(
             Triple(tags?.addrHousenumber ?: tags?.addrStreet, Icons.Default.Place, "Sokak / Ev"),
@@ -113,6 +123,7 @@ private fun PlaceDetailsContent(place: Place.Element, onClose: () -> Unit) {
             Triple(tags?.tourism, Icons.Default.Tour, "Turizm"),
             Triple(tags?.train, Icons.Default.Train, "Tren")
         )
+        Spacer(modifier = Modifier.height(8.dp))
 
         infoList.forEach { (value, icon, label) ->
             value?.takeUnless { it.isBlank() }?.let { originalText ->
@@ -130,6 +141,52 @@ private fun PlaceDetailsContent(place: Place.Element, onClose: () -> Unit) {
                     value = translatedText.value ?: originalText
                 )
             }
+        }
+        if (!isCommentSent) {
+            OutlinedTextField(
+                value = commentText,
+                onValueChange = { commentText = it },
+                label = { Text("Yorum Yazın") },
+                modifier = Modifier.fillMaxWidth()
+                    .heightIn(min = 56.dp, max = 70.dp),
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                repeat(5) { index ->
+                    IconButton(onClick = { rating = index + 1 }) {
+                        Icon(
+                            imageVector = if (index < rating) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Button(onClick = {
+                if (commentText.isNotBlank()) {
+                    commentRepository.addComment(
+                        userId = userId,
+                        placeId = place.id.toString(),
+                        placeName = tags?.name.orEmpty(),
+                        userComment = commentText,
+                        userName = userName,
+                        rating = rating
+                    ) { success ->
+                        if (success) {
+                            isCommentSent = true
+                        }
+                    }
+                }
+            }) {
+                Text("Gönder")
+            }
+        } else {
+            Text("Yorumunuz gönderildi!", color = MaterialTheme.colorScheme.primary)
         }
     }
 }

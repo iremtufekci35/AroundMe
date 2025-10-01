@@ -11,12 +11,13 @@ class FavoriteRepository {
     private val database = FirebaseDatabase.getInstance()
         .getReference("favorites")
 
-    fun addFavorite(userId: String, placeId: String, name: String, onComplete: (Boolean) -> Unit) {
-        val favoriteData = mapOf(
-            "placeId" to placeId,
-            "name" to name,
-            "timestamp" to System.currentTimeMillis()
-        )
+    fun addFavorite(
+        userId: String,
+        placeId: String,
+        name: String,
+        onComplete: (Boolean) -> Unit
+    ) {
+        val favoriteData = FavoriteItem(placeId, name, System.currentTimeMillis())
 
         database.child(userId)
             .push()

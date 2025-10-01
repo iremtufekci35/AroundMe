@@ -1,5 +1,6 @@
 package com.example.aroundme.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aroundme.data.model.Place
@@ -25,6 +26,12 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
 
     private val _loading = MutableStateFlow<Boolean>(false)
     val loading: StateFlow<Boolean> = _loading
+
+    private val _showDialog = MutableStateFlow<Boolean>(false)
+    val showDialog: StateFlow<Boolean> = _showDialog
+
+    private val _dialogMessage = MutableStateFlow<String>("")
+    val dialogMessage: StateFlow<String> = _dialogMessage
 
     private val _error = MutableStateFlow<String?>("")
 
@@ -91,6 +98,16 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
         _loading.value = value
     }
 
+    fun openDialog(message: String) {
+        _dialogMessage.value = message
+        _showDialog.value = true
+    }
+
+    fun closeDialog() {
+        _showDialog.value = false
+        _dialogMessage.value = ""
+    }
+
     fun loadTouristAttractionsInternal(searchQuery: String?) {
         /** here do not use static lat and lon */
         println("query burada: $searchQuery")
@@ -113,7 +130,8 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
                     """.trimIndent()
 
                 val response = RetrofitInstance.api.getTouristAttractions(query)
-                if (response.isSuccessful) {
+                println("response code: ${response.code()}")
+                if (response.isSuccessful && response.code() == 200) {
                     val body = response.body()
                     val elements = body?.getAsJsonArray("elements") ?: return@launch
                     val list = elements.mapNotNull { element ->
@@ -166,6 +184,10 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
                     }
                     _places.value = list
 
+                }
+                else{
+                    Log.d("loadTouristAttractionsInternal","Api hata mesaj:${response.message()},hata kodu:${response.code()}")
+                    openDialog("Yanıt Alınamadı")
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
