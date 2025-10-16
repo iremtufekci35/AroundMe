@@ -1,14 +1,6 @@
 package com.example.aroundme.ui.screens
 
-import androidx.compose.animation.animateColor
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -17,26 +9,24 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.aroundme.data.model.Place
 import com.example.aroundme.ui.cards.PlaceDetailsBottomSheet
+import com.example.aroundme.ui.components.InfoDialog
+import com.example.aroundme.ui.components.LoadingDialog
 import com.example.aroundme.ui.viewmodel.PlacesViewModel
-import com.google.firebase.auth.FirebaseAuth
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -54,14 +44,17 @@ fun MapScreen(
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val loading by placesViewModel.loading.collectAsState()
+    var showLoading by remember { mutableStateOf(false) }
     var selectedPlace by remember { mutableStateOf<Place.Element?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var hasSearched by remember { mutableStateOf(false) }
     val categories = listOf("Tarihi", "Doğa", "Müze", "Eğlence, Yemek")
-    val userId = FirebaseAuth.getInstance().currentUser?.uid
-    val showBottomBar = userId != null
-    val showDialog by placesViewModel.showDialog.collectAsState()
     LaunchedEffect(selectedPlace) { onBottomBarVisibleChange(selectedPlace == null) }
+
+    LaunchedEffect(loading) {
+        showLoading = loading
+    }
 
     LaunchedEffect(Unit) {
         Configuration.getInstance().apply {
@@ -154,6 +147,7 @@ fun MapScreen(
                             userMarker,
                             places
                         )
+                        hasSearched = true
                         keyboardController?.hide()
                     }) {
                         Icon(
@@ -176,6 +170,7 @@ fun MapScreen(
                             userMarker,
                             places
                         )
+                        hasSearched = true
                         keyboardController?.hide()
                     }
                 )
@@ -215,24 +210,34 @@ fun MapScreen(
                         searchQuery
                     )
                 } catch (e: Exception) {
-                    println("Recommendation response: $e")
+                    Log.d("MapScreen","Recommendation response exception: $e")
                 }
             }
         }
-        if (loading) {
-            val msg = if (!selectedCategory.isNullOrBlank()) {
-                "Öneriler Alınıyor..."
-            } else {
-                "Arama Yapılıyor..."
-            }
-            FancyLoadingDialog(message = msg)
+        if (showLoading) {
+            LoadingDialog(
+                message = if (!selectedCategory.isNullOrBlank()) "Öneriler Alınıyor..." else "Arama Yapılıyor...",
+                icon = if (!selectedCategory.isNullOrBlank()) Icons.Default.Star else Icons.Default.Search
+            )
         }
 
         selectedPlace?.let { place ->
             PlaceDetailsBottomSheet(
                 place = place,
                 onClose = { selectedPlace = null }
-            )        }
+            )
+        }
+        if (!loading && hasSearched && places.isEmpty()) {
+            var showInfo by remember { mutableStateOf(true) }
+
+            if (showInfo) {
+                InfoDialog(
+                    message = "Sonuç bulunamadı 😕",
+                    onDismiss = { showInfo = false }
+                )
+            }
+        }
+
     }
 }
 
@@ -248,85 +253,23 @@ private fun performSearch(
         mapView.overlays.removeAll { it is Marker && it != userMarker }
     } else {
         placesViewModel.setLoading(true)
-        placesViewModel.searchAttractions(query, selectedCategory)
+        val center = mapView.mapCenter as GeoPoint
+        val lat = center.latitude
+        val lon = center.longitude
+
+        val delta = 0.05
+        val minLat = lat - delta
+        val minLon = lon - delta
+        val maxLat = lat + delta
+        val maxLon = lon + delta
+
+        placesViewModel.searchAttractions(query, selectedCategory, minLat, minLon, maxLat, maxLon)
+
         val firstPlace = places.firstOrNull { it.tags?.name?.contains(query, true) == true }
         firstPlace?.let {
-            mapView.controller.animateTo(GeoPoint(it.lat ?: 0.0, it.lon ?: 0.0))
-            mapView.controller.setZoom(15.0)
-        }
-    }
-}
-
-@Composable
-fun FancyLoadingDialog(message: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Transparent)
-            .wrapContentSize(Alignment.Center)
-    ) {
-        val scaleAnim = remember { Animatable(0.8f) }
-        LaunchedEffect(Unit) {
-            scaleAnim.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing)
-            )
-        }
-
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            elevation = CardDefaults.cardElevation(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            modifier = Modifier
-                .padding(24.dp)
-                .wrapContentSize()
-                .graphicsLayer {
-                    scaleX = scaleAnim.value
-                    scaleY = scaleAnim.value
-                }
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .widthIn(min = 220.dp, max = 320.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                val infiniteTransition = rememberInfiniteTransition()
-                val iconScale by infiniteTransition.animateFloat(
-                    initialValue = 0.9f,
-                    targetValue = 1.2f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(700, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    )
-                )
-                val iconColor by infiniteTransition.animateColor(
-                    initialValue = MaterialTheme.colorScheme.primary,
-                    targetValue = MaterialTheme.colorScheme.secondary,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(700, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    )
-                )
-
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier
-                        .size(50.dp)
-                        .scale(iconScale)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(5.dp))
-            }
+            val target = GeoPoint(it.lat ?: 0.0, it.lon ?: 0.0)
+            mapView.controller.animateTo(target)
+            mapView.controller.setZoom(16.0)
         }
     }
 }

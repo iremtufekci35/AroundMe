@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
@@ -170,7 +171,13 @@ fun LoginScreen(navController: NavHostController) {
                             )
                         }
                     },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password,
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            userViewModel.loginUser(User(email = email, password = password))
+                        }
+                    ),
                     colors = TextFieldDefaults.colors(
                         focusedIndicatorColor = MaterialTheme.colorScheme.primary,
                         unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
@@ -254,7 +261,7 @@ fun LoginScreen(navController: NavHostController) {
                             }
                         }
                     } catch (e: ApiException) {
-                        Toast.makeText(context, "Google login iptal veya hata", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Google login iptal veya hata $e", Toast.LENGTH_SHORT).show()
                     }
                 }
 

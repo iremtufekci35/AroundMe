@@ -3,8 +3,6 @@ package com.example.aroundme.utils
 import com.google.firebase.auth.FirebaseAuthException
 
 object CommonUtils {
-    val Any.TAG: String
-        get() = this::class.java.simpleName
 
     fun getFirebaseErrorMessage(e: Exception): String {
         return when (e) {
@@ -29,5 +27,8 @@ object CommonUtils {
             }
             else -> "Bir hata oluştu: ${e.message}"
         }
+    }
+    fun String.toTitleCase(): String {
+        return this.lowercase().split(" ").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
     }
 }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.aroundme.data.model.Place
 import com.example.aroundme.data.model.PlaceRecommendation
 import com.example.aroundme.data.remote.RetrofitInstance
+import com.example.aroundme.ui.components.LoadingDialog
 import com.example.aroundme.utils.Translations
 import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
@@ -22,26 +23,19 @@ import javax.inject.Inject
 class PlacesViewModel @Inject constructor() : ViewModel() {
 
     private val _places = MutableStateFlow<List<Place.Element>>(emptyList())
-    val places: StateFlow<List<Place.Element>> = _places
+    val places: StateFlow<List<Place.Element>> get() = _places
 
     private val _loading = MutableStateFlow<Boolean>(false)
     val loading: StateFlow<Boolean> = _loading
 
-    private val _showDialog = MutableStateFlow<Boolean>(false)
-    val showDialog: StateFlow<Boolean> = _showDialog
-
-    private val _dialogMessage = MutableStateFlow<String>("")
-    val dialogMessage: StateFlow<String> = _dialogMessage
-
     private val _error = MutableStateFlow<String?>("")
-
     private val _recommendations = MutableStateFlow<List<PlaceRecommendation>>(emptyList())
 
-    fun searchAttractions(name: String?, category: String?) {
+    fun searchAttractions(name: String?, category: String?, minLat: Double, minLon: Double, maxLat: Double, maxLon: Double) {
         viewModelScope.launch {
             _loading.value = true
             try {
-                loadTouristAttractionsInternal(name)
+                loadTouristAttractionsInternal(name, minLat,minLon, maxLat, maxLon)
                 val filtered = _places.value.filter { place ->
                     val matchesName =
                         name.isNullOrBlank() || place.tags?.name?.contains(name, true) == true
@@ -60,16 +54,16 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
     }
 
     fun fetchAiRecommendations(latitude: Double, longitude: Double, category: String, keyword: String?) {
-        println("fetch ai 1 category $category")
+        Log.d("FetchAiRecommendations","Fetch ai category: $category")
         viewModelScope.launch {
             _loading.value = true
             try {
 
                 val recommendationList = getRecommendationsAi(latitude, longitude, category, keyword)
 
-                println("rec list: $recommendationList")
+                Log.d("FetchAiRecommendations","recommendation list: $recommendationList")
                 val translatedRecommendations = mutableListOf<PlaceRecommendation>()
-                println("rec list 2: $translatedRecommendations")
+                Log.d("FetchAiRecommendations","recommendation list 2: $translatedRecommendations")
                 recommendationList.forEach { rec ->
                     val cleanedName = rec.name.replace(Regex("\\s*\\([^)]*\\)"), "").trim()
 
@@ -79,7 +73,7 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
                         )
 
                         if (translatedRecommendations.size == recommendationList.size) {
-                            println("Translated & cleaned recommendations: $translatedRecommendations")
+                            Log.d("FetchAiRecommendations","Translated & cleaned recommendations: $translatedRecommendations")
                             _recommendations.value = translatedRecommendations
                             showAiRecommendationsOnMap(translatedRecommendations)
                         }
@@ -87,7 +81,7 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
                 }
             } catch (e: Exception) {
                 _error.value = e.message
-                println("AI fetch error: $e")
+                Log.d("FetchAiRecommendations","Fetch AI error: $e")
             } finally {
                 _loading.value = false
             }
@@ -98,19 +92,8 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
         _loading.value = value
     }
 
-    fun openDialog(message: String) {
-        _dialogMessage.value = message
-        _showDialog.value = true
-    }
-
-    fun closeDialog() {
-        _showDialog.value = false
-        _dialogMessage.value = ""
-    }
-
-    fun loadTouristAttractionsInternal(searchQuery: String?) {
-        /** here do not use static lat and lon */
-        println("query burada: $searchQuery")
+    fun loadTouristAttractionsInternal(searchQuery: String?, minLat: Double, minLon: Double, maxLat: Double, maxLon: Double) {
+        Log.d("LoadTouristAttractionsInternal","Query: $searchQuery")
         viewModelScope.launch {
             try {
                 val query = searchQuery?.let {
@@ -118,22 +101,27 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
                     [out:json];
                     node
                       [name~"$it",i]
-                      (38.40,27.10,38.45,27.20);
+                      ($minLat,$minLon,$maxLat,$maxLon);
                     out;
                     """.trimIndent()
                 } ?: """
                     [out:json];
                     node
                       [tourism=attraction]
-                      (38.40,27.10,38.45,27.20);
+                      ($minLat,$minLon,$maxLat,$maxLon);
                     out;
                     """.trimIndent()
 
                 val response = RetrofitInstance.api.getTouristAttractions(query)
-                println("response code: ${response.code()}")
+                Log.d("LoadTouristAttractionsInternal","Response Code: ${response.code()}")
                 if (response.isSuccessful && response.code() == 200) {
                     val body = response.body()
                     val elements = body?.getAsJsonArray("elements") ?: return@launch
+                    if (elements.isEmpty) {
+                        Log.d("LoadTouristAttractionsInternal","Api'den gelen elements boş gösterilecek veri yok.")
+                        _places.value = emptyList()
+                        return@launch
+                    }
                     val list = elements.mapNotNull { element ->
                         try {
                             val obj = JSONObject(element.toString())
@@ -186,8 +174,8 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
 
                 }
                 else{
-                    Log.d("loadTouristAttractionsInternal","Api hata mesaj:${response.message()},hata kodu:${response.code()}")
-                    openDialog("Yanıt Alınamadı")
+                    Log.d("LoadTouristAttractionsInternal","Api hata mesaj:${response.message()},hata kodu:${response.code()}")
+                    LoadingDialog()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -196,7 +184,7 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
     }
 
     fun showAiRecommendationsOnMap(recommendations: List<PlaceRecommendation>) {
-        println("showAiRecommendationsOnMap $recommendations")
+        Log.d("ShowAiRecommendationsOnMap","recommendations: $recommendations")
         val newPlaces = recommendations.mapNotNull { rec ->
             val lat = rec.latitude
             val lon = rec.longitude
@@ -242,7 +230,7 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
             }
         }
 
-        _places.value = _places.value + newPlaces
+        _places.value = newPlaces
     }
     suspend fun getRecommendationsAi(
         latitude: Double,
@@ -261,8 +249,8 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
         }
 
         val response = model.generateContent(basePrompt)
-        println("Prompt: $basePrompt")
-        println("AI response raw: ${response.text}")
+        Log.d("GetRecommendationsAi","Prompt: $basePrompt")
+        Log.d("GetRecommendationsAi","AI response raw: ${response.text}")
 
         val cleanedJson = response.text
             ?.trim()
@@ -272,7 +260,7 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
             ?.trim()
             ?: "[]"
 
-        println("Cleaned JSON: $cleanedJson")
+        Log.d("GetRecommendationsAi","Cleaned JSON: $cleanedJson")
 
         val jsonArray = org.json.JSONArray(cleanedJson)
         val list = mutableListOf<PlaceRecommendation>()
@@ -291,5 +279,9 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
         }
 
         return list
+    }
+    fun clearMapData() {
+        _places.value = emptyList()
+        _recommendations.value = emptyList()
     }
 }

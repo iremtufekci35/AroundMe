@@ -77,7 +77,7 @@ fun MainScreen(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
             if (isUserLoggedIn && showBottomBar) {
-                BottomBar(navController, userViewModel)
+                BottomBar(navController, userViewModel,placesViewModel)
             }
         }
     ) { innerPadding ->
@@ -117,7 +117,7 @@ fun MainScreen(
 }
 
 @Composable
-fun BottomBar(navController: NavController, userViewModel: UserViewModel) {
+fun BottomBar(navController: NavController, userViewModel: UserViewModel,placesViewModel: PlacesViewModel ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -136,7 +136,6 @@ fun BottomBar(navController: NavController, userViewModel: UserViewModel) {
                 }) {
                     Icon(Icons.Default.Home, contentDescription = "Ana Sayfa", tint = MaterialTheme.colorScheme.primary)
                 }
-//                Text("Ana Sayfa", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = {
@@ -149,18 +148,17 @@ fun BottomBar(navController: NavController, userViewModel: UserViewModel) {
                 }) {
                     Icon(Icons.Default.Favorite, contentDescription = "Favoriler", tint = MaterialTheme.colorScheme.primary)
                 }
-//                Text("Favoriler", style = MaterialTheme.typography.labelSmall,color = MaterialTheme.colorScheme.primary)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = {
                     userViewModel.logoutUser()
+                    placesViewModel.clearMapData()
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
                 }) {
                     Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Çıkış", tint = MaterialTheme.colorScheme.primary)
                 }
-//                Text("Çıkış", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             }
         }
     }

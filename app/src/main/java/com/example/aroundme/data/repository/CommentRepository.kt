@@ -34,4 +34,20 @@ class CommentRepository {
                 onComplete(task.isSuccessful)
             }
     }
+    fun getComments(placeId: String, callback: (List<CommentItem>) -> Unit) {
+        database.get().addOnSuccessListener { snapshot ->
+            val list = mutableListOf<CommentItem>()
+            snapshot.children.forEach { userNode ->
+                userNode.children.forEach { commentNode ->
+                    val comment = commentNode.getValue(CommentItem::class.java)
+                    if (comment?.placeId == placeId) {
+                        list.add(comment)
+                    }
+                }
+            }
+            callback(list)
+        }.addOnFailureListener {
+            callback(emptyList())
+        }
+    }
 }
