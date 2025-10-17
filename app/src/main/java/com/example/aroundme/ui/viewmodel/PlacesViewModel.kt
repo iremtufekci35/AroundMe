@@ -1,12 +1,12 @@
 package com.example.aroundme.ui.viewmodel
 
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aroundme.data.model.Place
 import com.example.aroundme.data.model.PlaceRecommendation
 import com.example.aroundme.data.remote.RetrofitInstance
-import com.example.aroundme.ui.components.LoadingDialog
 import com.example.aroundme.utils.Translations
 import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
@@ -30,6 +30,8 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
 
     private val _error = MutableStateFlow<String?>("")
     private val _recommendations = MutableStateFlow<List<PlaceRecommendation>>(emptyList())
+    var errorMessage = mutableStateOf<String?>(null)
+        private set
 
     fun searchAttractions(name: String?, category: String?, minLat: Double, minLon: Double, maxLat: Double, maxLon: Double) {
         viewModelScope.launch {
@@ -90,6 +92,9 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
 
     fun setLoading(value: Boolean) {
         _loading.value = value
+    }
+    fun showError(message: String) {
+        errorMessage.value = message
     }
 
     fun loadTouristAttractionsInternal(searchQuery: String?, minLat: Double, minLon: Double, maxLat: Double, maxLon: Double) {
@@ -175,7 +180,8 @@ class PlacesViewModel @Inject constructor() : ViewModel() {
                 }
                 else{
                     Log.d("LoadTouristAttractionsInternal","Api hata mesaj:${response.message()},hata kodu:${response.code()}")
-                    LoadingDialog()
+                    showError("Turistik yerler yüklenirken bir hata oluştu.\nKod: ${response.code()}")
+                    return@launch
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

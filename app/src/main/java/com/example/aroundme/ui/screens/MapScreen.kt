@@ -50,6 +50,8 @@ fun MapScreen(
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
     val categories = listOf("Tarihi", "Doğa", "Müze", "Eğlence, Yemek")
+    val errorMessage by placesViewModel.errorMessage
+
     LaunchedEffect(selectedPlace) { onBottomBarVisibleChange(selectedPlace == null) }
 
     LaunchedEffect(loading) {
