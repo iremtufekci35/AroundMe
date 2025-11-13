@@ -27,6 +27,7 @@ import com.example.aroundme.ui.cards.PlaceDetailsBottomSheet
 import com.example.aroundme.ui.components.InfoDialog
 import com.example.aroundme.ui.components.LoadingDialog
 import com.example.aroundme.ui.viewmodel.PlacesViewModel
+import kotlinx.coroutines.launch
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -50,7 +51,7 @@ fun MapScreen(
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var hasSearched by remember { mutableStateOf(false) }
     val categories = listOf("Tarihi", "Doğa", "Müze", "Eğlence, Yemek")
-    val errorMessage by placesViewModel.errorMessage
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(selectedPlace) { onBottomBarVisibleChange(selectedPlace == null) }
 
@@ -164,16 +165,20 @@ fun MapScreen(
                 ),
                 keyboardActions = KeyboardActions(
                     onSearch = {
-                        performSearch(
-                            searchQuery,
-                            selectedCategory,
-                            placesViewModel,
-                            mapView,
-                            userMarker,
-                            places
-                        )
                         hasSearched = true
                         keyboardController?.hide()
+
+                        scope.launch {
+//                            kotlinx.coroutines.delay(100)
+                            performSearch(
+                                searchQuery,
+                                selectedCategory,
+                                placesViewModel,
+                                mapView,
+                                userMarker,
+                                places
+                            )
+                        }
                     }
                 )
             )
@@ -229,17 +234,23 @@ fun MapScreen(
                 onClose = { selectedPlace = null }
             )
         }
-        if (!loading && hasSearched && places.isEmpty()) {
-            var showInfo by remember { mutableStateOf(true) }
+        var showInfo by remember { mutableStateOf(false) }
 
-            if (showInfo) {
-                InfoDialog(
-                    message = "Sonuç bulunamadı 😕",
-                    onDismiss = { showInfo = false }
-                )
+        LaunchedEffect(loading) {
+            if (!loading && hasSearched) {
+                kotlinx.coroutines.delay(300)
+                if (places.isEmpty()) {
+                    showInfo = true
+                }
             }
         }
 
+        if (showInfo) {
+            InfoDialog(
+                message = "Sonuç bulunamadı 😕",
+                onDismiss = { showInfo = false }
+            )
+        }
     }
 }
 
